@@ -16,3 +16,6 @@ outputs/
 *.docx
 *.pptx
 *.hwp
+
+# 외부 저장소 (git 제외)
+external/
