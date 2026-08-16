@@ -191,24 +191,28 @@ def stage_calibrate(p, a):
         sys.exit('ERROR %s 에 통계가 없다. measure 를 먼저 돌릴 것' % p.stats)
     here = Path(__file__).resolve().parent
     sh([sys.executable, str(here / 'calibrate.py')] + files
-       + ['--alphas'] + [str(x) for x in ALPHAS] + ['--cap', str(a.cap)],
+       + ['--alphas'] + [str(x) for x in a.alphas] + ['--cap', str(a.cap)],
        cwd=here)
 
 
 def stage_arms(p, a):
-    if a.dx is None or a.dy is None or a.cw is None or a.ch is None:
-        sys.exit('ERROR --dx/--dy/--cw/--ch 를 calibrate 출력에서 받아 넘길 것.\n'
-                 '       예: run_colab.py arms --alpha 2 --dx 3.9 --dy 4.1 '
-                 '--cw 0.074 --ch 0.028')
     common = {'RELAX_APPLY': 'both', 'RELAX_CAP': str(a.cap)}
     arms = {}
-    for al in ALPHAS:
+    for al in a.alphas:
         arms['R_sigma_a%g' % al] = dict(common, RELAX_MODE='sigma',
                                         RELAX_ALPHA=str(al))
-    arms['K1_const'] = dict(common, RELAX_MODE='const',
-                            RELAX_DX=str(a.dx), RELAX_DY=str(a.dy))
-    arms['K2_prop'] = dict(common, RELAX_MODE='prop',
-                           RELAX_CW=str(a.cw), RELAX_CH=str(a.ch))
+    have_const = None not in (a.dx, a.dy, a.cw, a.ch)
+    if have_const:
+        # K1/K2 는 alpha 하나에만 맞춰진다. 이름에 그 alpha 를 박아 둬야
+        # 나중에 어느 R 과 짝인지 헷갈리지 않는다.
+        tag = '_a%g' % a.alpha
+        arms['K1_const' + tag] = dict(common, RELAX_MODE='const',
+                                      RELAX_DX=str(a.dx), RELAX_DY=str(a.dy))
+        arms['K2_prop' + tag] = dict(common, RELAX_MODE='prop',
+                                     RELAX_CW=str(a.cw), RELAX_CH=str(a.ch))
+    else:
+        print('참고: --dx/--dy/--cw/--ch 가 없어 R 격자만 돌린다.')
+        print('      table 로 최고 alpha 를 고른 뒤 그 alpha 의 상수로 다시 부를 것.')
     if a.diagnostics:
         # 진단용. 짝 일관성 교란에 걸리므로 판정에 쓰지 않는다 (README 참고).
         arms['K3_shuffle'] = dict(common, RELAX_MODE='shuffle',
@@ -272,8 +276,10 @@ def main():
     ap.add_argument('--stats', default='/content/relax_stats')
     ap.add_argument('--gpu', type=int, default=0)
     ap.add_argument('--cap', type=float, default=1.0)
+    ap.add_argument('--alphas', nargs='+', type=float, default=ALPHAS,
+                    help='R 격자. 기본은 사전 선언 격자 %s' % ALPHAS)
     ap.add_argument('--alpha', type=float, default=2.0,
-                    help='K3/K4 진단에 쓸 alpha (R 격자에서 고른 값)')
+                    help='K1/K2/K3/K4 를 맞출 alpha (R 격자에서 고른 값)')
     ap.add_argument('--dx', type=float)
     ap.add_argument('--dy', type=float)
     ap.add_argument('--cw', type=float)
