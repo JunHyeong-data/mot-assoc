@@ -8,36 +8,51 @@ UncertaintyTrack (arXiv:2402.12303) 의 최대 기여 성분은 "bounding box re
 이 모듈은 UTrack 트래커에 확장 방식만 다른 네 갈래를 붙인다. 확장량의 평균을
 맞추므로, 갈라지는 것은 "얼마나 키웠나" 가 아니라 "무엇에 따라 키웠나" 뿐이다.
 
-  A  measure  확장 없음. 기준선과 수치가 같아야 한다 (훅 검증용) + 통계 수집
-  R  sigma    검출 공분산으로 키운다.   pad = alpha * s
-  K1 const    모두 같은 픽셀만큼 키운다. pad = delta          (s 의 정보 제거)
-  K2 prop     제 크기에 비례해 키운다.  pad = c * (w 또는 h)  (크기 교란만 남김)
+  A  measure       확장 없음. 기준선과 수치가 같아야 한다 (훅 검증) + 통계 수집
+  R  sigma         검출 공분산으로 키운다.   pad = alpha * s
+  K1 const         모두 같은 픽셀만큼.       pad = delta
+  K2 prop          제 크기에 비례해.         pad = c * (w 또는 h)   <-- 판정 갈래
+  K3 shuffle       s 를 통째로 뒤섞는다.     pad = alpha * s[perm]  (진단용)
+  K4 ratio_shuffle s/w 비율만 뒤섞는다.                             (진단용)
 
 s 는 상자 모서리의 표준편차다. tlbr 의 좌변은 x - w/2 이므로
   s_x = sqrt(var_x + var_w / 4),  s_y = sqrt(var_y + var_h / 4).
 
-**K2 가 결정적이다.** 실험 1 에서 NMS 분산은 상자 높이를 통제하면 위치오차와의
-편상관이 +0.044 로 사라졌다. 즉 s 는 거의 크기의 함수다. 그렇다면 K2 는 R 과
-같은 성능을 내야 하고, 그것이 확인되면 "불확실성이 전달됐다" 는 해석이 무너진다.
+**K2 가 판정 갈래다.** 실험 1 에서 NMS 분산은 상자 높이를 통제하면 위치오차와의
+편상관이 +0.044 로 사라졌다. 즉 s 는 거의 크기의 함수다. 그렇다면 K2 가 R 을
+재현해야 하고, 그러면 "불확실성이 전달됐다" 는 해석이 무너진다.
+
+**뒤섞기 갈래(K3, K4)를 판정에 쓰면 안 된다 — 검정력 확인에서 밝혀졌다.**
+UTrack 규약상 트랙은 마지막으로 매칭된 검출의 `_var_xywh` 를 물고 있다. 그래서
+정답쌍은 **같은 s 를 공유**하고, R 은 트랙과 검출을 같은 만큼 키워 기하를
+유지한다. 뒤섞으면 그 짝 일관성이 깨진다. 검증 (`power_check.py`, sigma 가
+순전한 잡음인 W3):
+
+    짝 일관성 있음 :  R-K4 = +0.1807
+    짝 일관성 제거 :  R-K4 = -0.0038      <- 이득이 통째로 사라진다
+
+즉 R 이 뒤섞기를 이기는 것은 **정보가 아니라 짝 일관성**이다. sigma 가 아무
+정보도 없는 세계에서도 +0.18 이 나온다. K3·K4 는 진단으로만 쓴다.
 
 설정은 전부 환경변수로 준다. UTrack 소스는 `collections.py` 에 클래스 하나를
 덧붙이는 것 말고는 건드리지 않는다 (`patch_utrack.py`).
 
-  RELAX_MODE    measure | sigma | const | prop | off
+  RELAX_MODE    measure | sigma | const | prop | shuffle | ratio_shuffle | off
   RELAX_ALPHA   sigma 배율
   RELAX_DX/DY   const 확장량 (픽셀)
   RELAX_CW/CH   prop 확장 비율
   RELAX_APPLY   both | det   확장을 양쪽에 줄지 검출에만 줄지 (기본 both)
-
-**`det` 를 기본으로 두면 안 된다.** 검출만 키우면 이미 잘 맞는 쌍에서 IoU 가
-오히려 **떨어진다** — 트랙 상자가 커진 검출 안에 들어가 교집합은 그대로인데
-합집합만 커지기 때문이다. 자체 시험에서 확인했다 (평균 비용이 alpha 에 증가).
-양쪽을 같이 키워야 확장이 임계값을 **여는** 방향으로만 작동한다.
-UncertaintyTrack 은 확장 뒤 GIoU 로 매칭해 이 문제를 피하지만, 그러면 확장과
-GIoU 두 변화가 섞인다. 여기서는 네 갈래가 **같은 IoU** 를 쓰게 두고 확장 방식만
-가른다. 이 차이는 결과 해석에 명시할 것.
   RELAX_CAP     pad <= CAP * (w 또는 h) 상한 (기본 1.0)
-  RELAX_STATS   통계 덤프 경로. 있으면 종료 시 누적 저장(시퀀스별 실행을 합산)
+  RELAX_SEED    뒤섞기 난수 씨앗
+  RELAX_STATS   통계 덤프 경로 (시퀀스마다 다른 경로를 줄 것)
+
+**`RELAX_APPLY=det` 를 기본으로 두면 안 된다.** 검출만 키우면 이미 잘 맞는
+쌍에서 IoU 가 오히려 **떨어진다** — 트랙 상자가 커진 검출 안으로 들어가 교집합은
+그대로인데 합집합만 커지기 때문이다. 자체 시험에서 확인했다 (정답쌍 비용이
+alpha 에 대해 증가). 양쪽을 같이 키워야 확장이 임계값을 **여는** 쪽으로만 작동한다.
+UncertaintyTrack 은 확장 뒤 GIoU 로 매칭해 이 문제를 피하지만, 그러면 확장과
+GIoU 두 변화가 섞인다. 여기서는 모든 갈래가 **같은 IoU** 를 쓰게 두고 확장 방식만
+가른다. 이 차이는 결과 해석에 명시할 것.
 """
 
 import os
@@ -65,7 +80,8 @@ APPLY = (os.environ.get('RELAX_APPLY') or 'both').lower()
 CAP = _env_f('RELAX_CAP', 1.0)
 STATS_PATH = os.environ.get('RELAX_STATS') or ''
 
-_VALID = ('measure', 'off', 'sigma', 'const', 'prop')
+_VALID = ('measure', 'off', 'sigma', 'const', 'prop', 'shuffle',
+          'ratio_shuffle')
 if MODE not in _VALID:
     raise ValueError('RELAX_MODE must be one of %s, got %r' % (_VALID, MODE))
 
@@ -80,6 +96,7 @@ RESERVOIR_N = int(_env_f('RELAX_RESERVOIR', 30000))
 
 _lock = threading.Lock()
 _rng = np.random.default_rng(0)
+_shuffle_rng = np.random.default_rng(int(_env_f('RELAX_SEED', 0)))
 _res = []            # [(sx, sy, w, h), ...]
 _acc = {
     'n_boxes': 0.0,      # 연관에서 본 검출 상자 수 (호출마다 중복 계수)
@@ -172,12 +189,38 @@ def _pads(tlbr, sx, sy):
     elif MODE == 'sigma':
         px = ALPHA * sx
         py = ALPHA * sy
+    elif MODE == 'shuffle':
+        # 같은 프레임 안에서 sigma 를 상자들 사이에 통째로 뒤섞는다.
+        # 확장량의 분포는 R 과 같고 sigma-상자 짝이 전부 깨진다.
+        # **크기와의 연결까지 깨지므로** 이것만으로는 "크기 이상의 정보" 를 못 잰다.
+        perm = _shuffle_rng.permutation(sx.size)
+        px = ALPHA * sx[perm]
+        py = ALPHA * sy[perm]
+    elif MODE == 'ratio_shuffle':
+        # **이것이 결정적 통제군이다.**
+        # s/w 비율만 뒤섞는다. 크기와의 연결(s 가 큰 상자에서 크다)은 그대로 두고
+        # **크기로 설명되지 않는 부분의 짝만** 깬다.
+        # R > ratio_shuffle 이라야 "크기 이상의 정보가 있었다" 고 말할 수 있다.
+        rx = sx / w
+        ry = sy / h
+        perm = _shuffle_rng.permutation(sx.size)
+        px = ALPHA * w * rx[perm]
+        py = ALPHA * h * ry[perm]
     elif MODE == 'const':
         px = np.full_like(w, DX)
         py = np.full_like(h, DY)
     else:                                              # prop
         px = CW * w
         py = CH * h
+
+    if MODE in ('shuffle', 'ratio_shuffle'):
+        # 섞은 뒤 평균이 R 과 어긋날 수 있다 (ratio_shuffle 은 Cov(w, s/w) 만큼).
+        # 호출마다 R 의 평균에 정확히 맞춰 되돌린다. 그래야 갈리는 것이
+        # "확장량" 이 아니라 "짝" 뿐이다.
+        for arr, ref in ((px, ALPHA * sx), (py, ALPHA * sy)):
+            m = arr.mean()
+            if m > 0:
+                arr *= ref.mean() / m
 
     cap_x = CAP * w
     cap_y = CAP * h
