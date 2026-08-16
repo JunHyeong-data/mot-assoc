@@ -16,6 +16,13 @@
 | 4 | OC-SORT (Cao et al., CVPR 2023) | | |
 | 5 | UCMCTrack (Yi et al., AAAI 2024) | | |
 | 6 | Bae & Yoon, CVPR 2014 — Tracklet Confidence | | |
+| 7 | **Bae & Yoon, TPAMI 40(3) 2018 — Confidence-Based Data Association** | 초록 확인 | `uncertainty_related_work.md` |
+| 8 | **UTrack (Solano-Carrillo et al., ECCV24 UnCV)** | 정독 + **재현 완료** | `../experiments/exp02_utrack_replication/` |
+| 9 | **UncertaintyTrack (Lee & Waslander, arXiv:2402.12303)** | 절제표 확인 | `uncertainty_related_work.md` |
+| 10 | Localization-Guided Track (arXiv:2309.09765) / Deep LG-Track (2504.01457) | 미독 | |
+
+**7~10 은 `uncertainty_related_work.md` 에서 "불확실성이 어느 통로로 할당에
+도달하는가" 라는 네 번째 질문으로 함께 대조한다.** 그 표가 이 연구의 논지다.
 
 ---
 
