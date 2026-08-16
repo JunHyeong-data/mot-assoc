@@ -185,9 +185,17 @@ def main():
     a = ap.parse_args()
 
     cfg = ARMS[a.arm]
-    imgs = sorted((Path(a.root) / a.seq / 'img1').glob('*.jpg'))[:a.frames]
+    if a.seq == 'all':
+        # 포크 통계는 7시퀀스 전체에서 나왔다. 모집단을 맞추려면 여기도 그래야 한다.
+        seqs = sorted(d.name for d in Path(a.root).iterdir() if d.is_dir())
+    else:
+        seqs = [a.seq]
+    imgs = []
+    for sq in seqs:
+        imgs += sorted((Path(a.root) / sq / 'img1').glob('*.jpg'))[:a.frames]
     if not imgs:
-        sys.exit('ERROR 이미지가 없다: %s' % (Path(a.root) / a.seq / 'img1'))
+        sys.exit('ERROR 이미지가 없다: %s' % a.root)
+    print('시퀀스 %d개: %s' % (len(seqs), ', '.join(seqs)))
 
     mod, where = find_nms_module()
     print('non_max_suppression 위치: %s' % where)
@@ -231,7 +239,8 @@ def main():
         keep = sc >= a.min_score
         print('점수 >= %.2f 로 %d -> %d 개' % (a.min_score, sc.size, keep.sum()))
         var, box = var[keep], box[keep]
-    summarize('우리 추출 · 갈래 %s (min_score %.2f)' % (a.arm, a.min_score),
+    summarize('우리 추출 · 갈래 %s (min_score %.2f, %s)'
+              % (a.arm, a.min_score, a.seq),
               var, box, gain)
 
 
