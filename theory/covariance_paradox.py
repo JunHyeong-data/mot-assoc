@@ -8,6 +8,11 @@
 
 손계산 답 맞추기용. 종이로 먼저 풀고 이 스크립트로 확인할 것.
 """
+import sys
+
+# 콘솔이 cp949 여도 죽지 않게. print 문의 특수문자는 ASCII 로 쓸 것.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
 
 # 1차원, 위치만 추적. F = H = 1
 X0, P0, Q, R = 100.0, 4.0, 1.0, 1.0
@@ -26,7 +31,7 @@ def update(x_pred, P_pred, z):
 
 
 print("=" * 72)
-print("1-A. 측정이 들어올 때 — P 는 수렴한다")
+print("1-A. 측정이 들어올 때 -- P 는 수렴한다")
 print("=" * 72)
 print(f"{'사이클':>6}{'P-':>9}{'S':>9}{'K':>9}{'x':>10}{'P':>9}")
 print("-" * 72)
@@ -43,7 +48,7 @@ print("     검출이 트랙의 불확실성을 눌러주고 있다는 뜻.")
 print()
 
 print("=" * 72)
-print("1-B. 측정이 없을 때 (가림) — P 는 계속 커지고 d^2 은 작아진다")
+print("1-B. 측정이 없을 때 (가림) -- P 는 계속 커지고 d^2 은 작아진다")
 print("=" * 72)
 print("오차를 10 px 로 고정하고 d^2 = 10^2 / (P- + R) 만 다시 계산한다.")
 print()

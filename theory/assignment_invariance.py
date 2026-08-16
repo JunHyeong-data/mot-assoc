@@ -32,18 +32,40 @@ def bhatta(eps, St, Sd):
     return mahal, 0.5 * lb - 0.25 * lt - 0.25 * ld
 
 
+def pairs(X):
+    """최적 할당을 (트랙, 검출) 쌍의 집합으로. M>N 이면 어느 행이 빠지는지가 여기 담긴다."""
+    return set(zip(*(v.tolist() for v in linear_sum_assignment(X))))
+
+
 print("=" * 72)
-print("[1] 행상수 / 열상수는 할당을 바꾸지 않는다")
+print("[1] 행상수 / 열상수는 할당을 바꾸지 않는다 -- 단, 조건이 붙는다")
 print("=" * 72)
-for M, N in [(8, 8), (8, 14)]:
-    C = rng.normal(size=(M, N)) * 5
-    a, b = rng.normal(size=M) * 3, rng.normal(size=N) * 3
-    base = linear_sum_assignment(C)
-    same = lambda X: np.array_equal(linear_sum_assignment(X)[1], base[1])
-    print(f"  {M}x{N}  행상수 불변={same(C + a[:, None])}   "
-          f"열상수 불변={same(C + b[None, :])}   "
-          f"둘다={same(C + a[:, None] + b[None, :])}")
-print("  -> 정방이면 둘 다 불변. M<N(검출이 더 많은 실제 상황)이면 열상수는 깨진다.")
+print("  무작위 비용행렬 1000회. 할당 쌍 집합이 원래와 같은 시행의 비율.")
+print()
+print(f"  {'M x N':>10}{'행상수 불변':>16}{'열상수 불변':>16}{'둘다':>14}")
+print("  " + "-" * 56)
+
+rng1 = np.random.default_rng(1)
+T1 = 1000
+for M, N in [(8, 8), (8, 14), (14, 8)]:
+    hit = np.zeros(3, dtype=int)
+    for _ in range(T1):
+        C = rng1.normal(size=(M, N)) * 5
+        a, b = rng1.normal(size=M) * 3, rng1.normal(size=N) * 3
+        base = pairs(C)
+        hit += [pairs(C + a[:, None]) == base,
+                pairs(C + b[None, :]) == base,
+                pairs(C + a[:, None] + b[None, :]) == base]
+    print(f"  {f'{M} x {N}':>10}{f'{hit[0]}/{T1}':>16}"
+          f"{f'{hit[1]}/{T1}':>16}{f'{hit[2]}/{T1}':>14}")
+
+print()
+print("  정방 (M=N)              : 둘 다 불변.")
+print("  M < N (검출이 더 많다)  : 모든 트랙이 배정된다 -> 행상수 불변, 열상수 깨짐.")
+print("  M > N (가림으로 검출 줄음): 트랙 중 N 개만 배정된다. 어느 트랙을 버릴지가")
+print("                            행상수에 달려 있다 -> 행상수가 깨진다.")
+print()
+print("  즉 '행상수 불변' 은 모든 행이 배정될 때(M <= N)만 성립하는 조건부 명제다.")
 
 print()
 print("=" * 72)
@@ -84,5 +106,40 @@ print("  -> 상수 Sigma_d  : 행내 편차가 기계정밀도(0). 할당 변경
 print("     이것은 우연이 아니라 증명된 사실이다 (순수 행상수 -> Hungarian 불변).")
 print("  -> 개체별 Sigma_d: 편차가 살아있고, 실제로 할당이 바뀐다.")
 print()
-print("결론: 검출 불확실성이 할당에 전달되기 위한 필요조건은")
+print("=" * 72)
+print("[3] 그런데 M > N 이면 상수 Sigma_d 여도 할당이 바뀐다")
+print("=" * 72)
+print("  [2] 는 M<N 에서 쟀다. 가림 중에는 검출이 사라져 M>N 이 되는 것이 정상이다.")
+print("  같은 실험을 모양만 바꿔 다시 돌린다. Sigma_d 는 내내 상수(= 순수 행상수).")
+print()
+print(f"  {'M x N':>10}{'행내 최대편차':>18}{'할당 변경/시행':>18}{'바뀐 쌍 총수':>16}")
+print("  " + "-" * 60)
+
+for M, N in [(10, 15), (10, 10), (15, 10), (20, 10)]:
+    dev, changed, ndiff = 0.0, 0, 0
+    for _ in range(TRIALS):
+        tracks = [spd(1.0) for _ in range(M)]
+        mu_t = rng.normal(size=(M, N_DIM)) * SEP
+        mu_d = rng.normal(size=(N, N_DIM)) * SEP
+        Sd_const = spd(0.05)
+        A = np.zeros((M, N)); B = np.zeros((M, N))
+        for i in range(M):
+            for j in range(N):
+                A[i, j], B[i, j] = bhatta(mu_t[i] - mu_d[j], tracks[i], Sd_const)
+        lost = len(pairs(A) - pairs(A + B))
+        dev = max(dev, np.abs(B - B.mean(axis=1, keepdims=True)).max())
+        ndiff += lost
+        changed += lost > 0
+    print(f"  {f'{M} x {N}':>10}{dev:>18.2e}{f'{changed}/{TRIALS}':>18}{ndiff:>16}")
+
+print()
+print("  행내 편차는 모양과 무관하게 기계정밀도다. B 는 어느 경우에도 순수 행상수다.")
+print("  그런데 M > N 에서만 할당이 바뀐다. 항이 분리되느냐가 아니라,")
+print("  행상수 불변성 자체가 M <= N 조건부이기 때문이다.")
+print()
+print("결론: M <= N 이면 검출 불확실성이 할당에 전달되기 위한 필요조건은")
 print("      '트랙 x 검출로 분리되지 않는 성분이 존재하는 것'이다.")
+print("      M > N 이면 이 필요조건이 느슨해진다. 분리되는 항도")
+print("      '어느 트랙을 버릴지'를 통해 할당에 도달한다.")
+print()
+print("      => 실데이터에서는 프레임마다 M,N 이 바뀐다. 어느 쪽 체제인지 먼저 세야 한다.")
