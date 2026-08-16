@@ -40,13 +40,22 @@ from scipy.stats import spearmanr                          # noqa: E402
 from ultralytics import YOLO                               # noqa: E402
 from ultralytics.utils import nms as ulnms                 # noqa: E402
 
+import os
+
 SEQ = sys.argv[1] if len(sys.argv) > 1 else "MOT17-02-FRCNN"
 LIMIT = int(sys.argv[2]) if len(sys.argv) > 2 else 60
 ROOT = Path("data/MOT17_A/ablation") / SEQ
-MODEL = "../BSDsystem/yolov8m.pt"
 
-CONF = 0.10          # 낮게 잡아야 억제 후보가 충분히 생긴다
-IOU_NMS = 0.45       # 이 이상 겹치는 raw 후보가 '억제된 것'
+# 검출기와 NMS 설정을 환경변수로 갈아끼울 수 있게 한다.
+# 기본값은 **사전 선언 당시 그대로**다 -- 관문 판정의 재현성을 위해 바꾸지 않는다.
+# 저자 가중치/포크 설정으로 재는 것은 별개의 측정이며 TAG 로 구분해 저장한다.
+MODEL = os.environ.get("EXP01_MODEL", "../BSDsystem/yolov8m.pt")
+CONF = float(os.environ.get("EXP01_CONF", 0.10))   # 낮게 잡아야 억제 후보가 충분히 생긴다
+IOU_NMS = float(os.environ.get("EXP01_IOU", 0.45)) # 이 이상 겹치는 raw 후보가 '억제된 것'
+_isz = os.environ.get("EXP01_IMGSZ", "640")        # "640" 또는 "800,1440"
+IMGSZ = [int(x) for x in _isz.split(",")] if "," in _isz else int(_isz)
+TAG = os.environ.get("EXP01_TAG", "")              # 결과 npz 파일명 접미사
+
 MIN_CAND = 3         # 표본 산포를 믿을 최소 후보 수
 GT_IOU = 0.5         # GT 매칭 기준
 
@@ -169,7 +178,7 @@ print("=" * 72)
 print("실험 1 파이프라인 검증 -- 한 시퀀스")
 print("=" * 72)
 print(f"  시퀀스   : {SEQ}")
-print(f"  모델     : {MODEL}")
+print(f"  모델     : {MODEL}   imgsz: {IMGSZ}")
 print(f"  conf     : {CONF}   NMS IoU: {IOU_NMS}   최소 후보수: {MIN_CAND}")
 print()
 
@@ -183,7 +192,7 @@ n_matched = n_det = 0
 for k, ip in enumerate(imgs):
     CAPTURED.clear()
     r = model.predict(source=str(ip), conf=CONF, iou=IOU_NMS, classes=[0],
-                      verbose=False)[0]
+                      imgsz=IMGSZ, verbose=False)[0]
     stats = CAPTURED[0] if CAPTURED else []
     det = r.boxes.xyxy.cpu().numpy()
     n_det += len(det)
@@ -212,7 +221,7 @@ if len(A) < 20:
 sc, sh, ncand, hh, err, vis, frame, sxx, sxy, syy, dcx, dcy = A.T
 ok = ~np.isnan(sc)
 
-out_npz = Path("data/exp01") / f"{SEQ}.npz"
+out_npz = Path("data/exp01") / f"{SEQ}{TAG}.npz"
 out_npz.parent.mkdir(parents=True, exist_ok=True)
 np.savez(out_npz, s_c=sc, s_h=sh, ncand=ncand, h=hh, err=err, vis=vis, frame=frame,
          sxx=sxx, sxy=sxy, syy=syy, dcx=dcx, dcy=dcy,
