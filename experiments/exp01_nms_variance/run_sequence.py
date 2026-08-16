@@ -84,11 +84,19 @@ def patched_nms(prediction, *a, **kw):
     return_idxs=True 가 주는 인덱스를 쓰면 그 문제가 사라진다.
     """
     want = kw.get("return_idxs", False)
+
+    # **호출 전에 복사한다.** non_max_suppression 은 raw prediction 의 상자를
+    # 제자리에서 xywh -> xyxy 로 바꾼다. 호출 뒤에 읽으면 이미 xyxy 인데
+    # 거기에 xywh2xyxy 를 또 걸게 되어 상자가 3배로 부푼다. 오류 없이 조용히
+    # 틀리고, 부푼 상자는 서로 다 겹쳐 후보 풀이 통째로 오염된다.
+    # (2026-08-16 실험 4 에서 발견. 그전 결과는 이 버그의 영향을 받았다.)
+    _p = prediction[0] if isinstance(prediction, (list, tuple)) else prediction
+    _snap = (_p[0] if _p.ndim == 3 else _p).detach().clone()
+
     res = _orig_nms(prediction, *a, **{**kw, "return_idxs": True})
     out, keepi = res
     try:
-        p = prediction[0] if isinstance(prediction, (list, tuple)) else prediction
-        x = p[0].T if p.ndim == 3 else p.T           # (N, 4+nc), letterbox 좌표
+        x = _snap.T                                  # (N, 4+nc), letterbox 좌표 xywh
         boxes = xywh2xyxy(x[:, :4]).cpu().numpy()
         person = x[:, 4].cpu().numpy()               # COCO class 0 = person
         pool = person >= CONF                        # NMS 가 실제로 본 후보 풀
