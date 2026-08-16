@@ -229,10 +229,41 @@ def stage_arms(p, a):
         restore_ann(p)
 
 
+ARM_PREFIXES = ('A_measure', 'R_sigma', 'K1_const', 'K2_prop',
+                'K3_shuffle', 'K4_ratioshuf')
+
+
+def _arm_sort_key(name):
+    order = {p: i for i, p in enumerate(ARM_PREFIXES)}
+    head = next((p for p in ARM_PREFIXES if name.startswith(p)), '')
+    tail = name[len(head):].lstrip('_a')
+    try:
+        num = float(tail)
+    except ValueError:
+        num = 0.0
+    return (order.get(head, 99), num)
+
+
 def stage_table(p, a):
     cols = ['HOTA', 'DetA', 'AssA', 'MOTA', 'IDF1', 'IDSW']
-    arms = sorted(d.name for d in p.results.iterdir()
-                  if d.is_dir() and (d / 'data').exists())
+    found = [d.name for d in p.results.iterdir()
+             if d.is_dir() and (d / 'data').exists()]
+    if a.all_runs:
+        arms = sorted(found)
+        print('경고: --all 은 다른 실험의 실행 폴더까지 보여준다.')
+        print('      그 폴더들의 요약은 **그때의 seqmap 으로** 평가된 것이라')
+        print('      시퀀스 수가 다르면 서로 비교할 수 없다.')
+        print('      (exp02 에서 MOT17-02 누락 시 모든 갈래가 ~2.35 부풀었다)')
+        print('')
+    else:
+        arms = sorted((n for n in found if n.startswith(ARM_PREFIXES)),
+                      key=_arm_sort_key)
+        skipped = len(found) - len(arms)
+        if skipped:
+            print('참고: 이 실험 것이 아닌 폴더 %d 개는 뺐다 (--all 로 보기).'
+                  % skipped)
+    if not arms:
+        sys.exit('ERROR 이 실험의 결과 폴더가 없다. measure 부터 돌릴 것')
     base = None
     rows = []
     for arm in arms:
@@ -285,6 +316,8 @@ def main():
     ap.add_argument('--cw', type=float)
     ap.add_argument('--ch', type=float)
     ap.add_argument('--diagnostics', action='store_true')
+    ap.add_argument('--all', dest='all_runs', action='store_true',
+                    help='table: 다른 실험의 실행 폴더까지 보여준다')
     a = ap.parse_args()
     p = Paths(a)
 
