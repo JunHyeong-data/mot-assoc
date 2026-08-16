@@ -36,29 +36,61 @@ ultralytics 가 잡힌 것이고, 그러면 NMS 분산이 안 나와서 실험 �
 !pip install -q "git+https://github.com/DLR-MI/ultralytics.git@nms-var"
 ```
 
-## 셀 1 — 실험 코드 받고 설치 (1분)
+## 셀 1 — 실험 코드 설치 (10초)
+
+**이 저장소는 GitHub 원격이 없다.** 그래서 콜랩에서 `git clone` 이 안 된다
+(`could not read Username for 'https://github.com'` 은 그 뜻이다).
+대신 필요한 파일 4개를 셀 하나에 담아 자기설치하게 만들어 뒀다.
+
+`bootstrap_cell.txt` **파일 전체를 복사해서 셀에 붙여넣는다.** 17 KB짜리
+base64 덩어리가 들어 있어 길지만, 붙여넣기 한 번으로 끝이고 인증이 필요 없다.
+
+로컬에서 파일을 고쳤으면 먼저 다시 만들어야 한다:
 
 ```bash
-!rm -rf /content/mot-assoc
-!git clone -q https://github.com/JunHyeong-data/mot-assoc.git /content/mot-assoc
-!python /content/mot-assoc/experiments/exp03_box_relaxation/patch_utrack.py /content/UTrack
+python experiments/exp03_box_relaxation/make_bootstrap.py
+```
+
+셀을 돌리면 마지막에 이렇게 나와야 한다.
+
+```
+설치: ['box_relax.py', 'calibrate.py', 'patch_utrack.py', 'run_colab.py']
+copied  /content/UTrack/tracker/box_relax.py
+patched /content/UTrack/tracker/associations/collections.py
+relax_botsort 등록: True
+```
+
+<details>
+<summary>대안 — zip 업로드</summary>
+
+부트스트랩 셀이 너무 길어 불편하면 로컬에서 압축해 올려도 된다.
+
+```bash
+cd experiments/exp03_box_relaxation && zip -r ../../exp03.zip . -x "__pycache__/*"
 ```
 
 ```python
-import sys
-sys.path.insert(0, '/content/UTrack')
-from tracker.associations.collections import ASSOCIATIONS
-print('relax_botsort 등록:', 'relax_botsort' in ASSOCIATIONS)
+from google.colab import files; files.upload()      # exp03.zip 고르기
+!mkdir -p /content/exp03 && unzip -qo exp03.zip -d /content/exp03
+!python /content/exp03/patch_utrack.py /content/UTrack
 ```
+</details>
 
-`True` 여야 한다.
+<details>
+<summary>근본 해결 — GitHub 에 올리기</summary>
+
+앞으로도 콜랩을 계속 쓸 거면 원격을 하나 두는 게 편하다. 다만 이 저장소에는
+아직 논문 전 결과와 사전 선언 기준이 들어 있으니 **비공개(private)로 만들고
+콜랩에서는 토큰으로 받는 형태**가 맞다. 토큰은 네 계정 자격증명이라 내가
+대신 만들 수 없다. 저장소를 만들면 `git remote add` 부터는 도와줄 수 있어.
+</details>
 
 ## 셀 2 — 관문 A: measure 갈래 (약 10분)
 
 확장량이 0 이므로 **기준선과 수치가 같아야 한다.** 동시에 σ 통계를 시퀀스별로 남긴다.
 
 ```bash
-!python /content/mot-assoc/experiments/exp03_box_relaxation/run_colab.py measure
+!python /content/exp03/run_colab.py measure
 ```
 
 > **여기가 관문이다.** 출력 끝의 `COMBINED` HOTA 가 exp02 기준선
@@ -73,7 +105,7 @@ print('relax_botsort 등록:', 'relax_botsort' in ASSOCIATIONS)
 ## 셀 3 — 확장량 맞추기 (10초) · **눈으로 볼 것**
 
 ```bash
-!python /content/mot-assoc/experiments/exp03_box_relaxation/run_colab.py calibrate
+!python /content/exp03/run_colab.py calibrate
 ```
 
 출력에서 **세 줄을 먼저 확인한다.**
@@ -92,7 +124,7 @@ print('relax_botsort 등록:', 'relax_botsort' in ASSOCIATIONS)
 α 격자 5개 + K1 + K2 = 7갈래 × 7시퀀스. 셀 3 이 준 숫자를 그대로 넣는다.
 
 ```bash
-!python /content/mot-assoc/experiments/exp03_box_relaxation/run_colab.py arms \
+!python /content/exp03/run_colab.py arms \
     --dx 4.028242 --dy 3.913168 --cw 0.074845 --ch 0.027837
 ```
 
@@ -107,7 +139,7 @@ print('relax_botsort 등록:', 'relax_botsort' in ASSOCIATIONS)
 ## 셀 5 — 표 (즉시)
 
 ```bash
-!python /content/mot-assoc/experiments/exp03_box_relaxation/run_colab.py table
+!python /content/exp03/run_colab.py table
 ```
 
 ## 셀 6 — 백업 (**끊기기 전에 반드시**)
@@ -131,7 +163,7 @@ from google.colab import drive; drive.mount('/content/drive')
 한 시퀀스짜리로 남아 있을 수 있다. 원본은 `val_half.json.orig` 에 있다.
 
 ```bash
-!python /content/mot-assoc/experiments/exp03_box_relaxation/run_colab.py restore
+!python /content/exp03/run_colab.py restore
 ```
 
 **중간에 런타임이 끊겼다** — 같은 명령을 다시 돌린다. 결과 txt 가 이미 있는
