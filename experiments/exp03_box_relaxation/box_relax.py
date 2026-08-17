@@ -119,6 +119,24 @@ _acc = {
     'n_clipped': 0.0,
 }
 
+# 트랙 쪽 누적. **저수지와 분리해서 담는다.**
+#
+# calibrate.py 는 검출 쪽 표본으로만 상수를 푼다. 그런데 RELAX_APPLY=both 라
+# pad 는 트랙에도 붙는다. 트랙 sigma 분포가 검출과 다르면 **검출 쪽 평균만
+# 맞고 트랙 쪽은 어긋난다** -- 그러면 갈래들이 "확장량 일치" 가 아니게 된다.
+# 이 실험의 전부가 확장량 일치에 걸려 있는데 그 절반이 검증된 적이 없었다.
+#
+# 저수지에 섞으면 calibrate 의 상수가 바뀌어 exp03 수치가 흔들린다. 그래서
+# 합계만 따로 모으고, measure 실행이 트랙/검출 평균을 나란히 보고하게 한다.
+# (2026-08-17 에 열어둔 항목)
+_acc_t = {
+    'n_boxes': 0.0, 'sum_sx': 0.0, 'sum_sy': 0.0,
+    'sum_w': 0.0, 'sum_h': 0.0, 'sum_pad_x': 0.0, 'sum_pad_y': 0.0,
+    'n_zero_var': 0.0,
+}
+_acc['sum_pad_x'] = 0.0   # 검출 쪽 실제 pad 합 (상한 적용 후)
+_acc['sum_pad_y'] = 0.0
+
 
 def _reserve(rows):
     """표준 저수지 표본(Algorithm R). 앞쪽 프레임에 치우치지 않게 한다.
@@ -140,7 +158,7 @@ def _reserve(rows):
         _acc['n_boxes'] += 1.0
 
 
-def _record(sx, sy, w, h, n_clipped, n_zero):
+def _record(sx, sy, w, h, n_clipped, n_zero, px=None, py=None):
     with _lock:
         _acc['n_calls'] += 1.0
         _acc['sum_sx'] += float(sx.sum())
@@ -151,7 +169,23 @@ def _record(sx, sy, w, h, n_clipped, n_zero):
         _acc['sum_sy2'] += float((sy ** 2).sum())
         _acc['n_clipped'] += float(n_clipped)
         _acc['n_zero_var'] += float(n_zero)
+        if px is not None:
+            _acc['sum_pad_x'] += float(px.sum())
+            _acc['sum_pad_y'] += float(py.sum())
         _reserve(zip(sx.tolist(), sy.tolist(), w.tolist(), h.tolist()))
+
+
+def _record_track(sx, sy, w, h, px, py, n_zero):
+    """트랙 쪽. 저수지에 넣지 않는다 (calibrate 의 상수를 바꾸면 안 된다)."""
+    with _lock:
+        _acc_t['n_boxes'] += float(sx.size)
+        _acc_t['sum_sx'] += float(sx.sum())
+        _acc_t['sum_sy'] += float(sy.sum())
+        _acc_t['sum_w'] += float(w.sum())
+        _acc_t['sum_h'] += float(h.sum())
+        _acc_t['sum_pad_x'] += float(px.sum())
+        _acc_t['sum_pad_y'] += float(py.sum())
+        _acc_t['n_zero_var'] += float(n_zero)
 
 
 def _dump_stats():
@@ -170,6 +204,7 @@ def _dump_stats():
     out = dict(_acc)
     out['reservoir'] = [[round(v, 5) for v in row] for row in _res]
     out['reservoir_n'] = RESERVOIR_N
+    out['track'] = dict(_acc_t)          # 트랙 쪽 (저수지 없음, 합계만)
     out['_meta'] = {'mode': MODE, 'apply': APPLY, 'cap': CAP, 'alpha': ALPHA}
     parent = os.path.dirname(os.path.abspath(STATS_PATH))
     if parent and not os.path.isdir(parent):
@@ -308,12 +343,13 @@ def relaxed_iou_distance(tracks, detections, args=None,
     if d_tlbr.shape[0] > 0:
         dsx, dsy, n_zero = _edge_sigma(_var_of(detections))
         dpx, dpy, dw, dh, n_clip = _pads(d_tlbr, dsx, dsy)
-        _record(dsx, dsy, dw, dh, n_clip, n_zero)
+        _record(dsx, dsy, dw, dh, n_clip, n_zero, dpx, dpy)
         d_tlbr = _expand(d_tlbr, dpx, dpy)
 
     if APPLY == 'both' and t_tlbr.shape[0] > 0:
-        tsx, tsy, _ = _edge_sigma(_var_of(tracks))
-        tpx, tpy, _, _, _ = _pads(t_tlbr, tsx, tsy)
+        tsx, tsy, t_zero = _edge_sigma(_var_of(tracks))
+        tpx, tpy, tw, th, _ = _pads(t_tlbr, tsx, tsy)
+        _record_track(tsx, tsy, tw, th, tpx, tpy, t_zero)
         t_tlbr = _expand(t_tlbr, tpx, tpy)
 
     cost_matrix = 1.0 - ious(t_tlbr, d_tlbr)

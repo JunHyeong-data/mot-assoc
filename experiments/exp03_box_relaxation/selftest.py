@@ -186,6 +186,48 @@ def main():
         ok = False
         print('    FAIL R and K1 are indistinguishable')
 
+    # ---- [3b] 트랙 쪽도 맞는가 - 여태 검증 안 된 절반 ----------------------
+    # calibrate.py 는 **검출 쪽** 표본으로만 상수를 푼다. 그런데 APPLY=both 라
+    # pad 는 트랙에도 붙는다. 트랙 sigma/크기 분포가 검출과 다르면 검출 쪽만
+    # 맞고 트랙 쪽은 어긋난다 -> 갈래들이 '확장량 일치' 가 아니게 된다.
+    # 이 실험의 전부가 확장량 일치에 걸려 있으므로 반드시 확인해야 한다.
+    print('[3b] track-side expansion (calibrate 는 검출 쪽만 보고 상수를 푼다)')
+    al = 2.0
+    tx = calibrate.mean_pad_sigma(sx, w, al, cap)
+    ty = calibrate.mean_pad_sigma(sy, h, al, cap)
+    dx, _ = calibrate.solve_const(w, tx, cap)
+    dy, _ = calibrate.solve_const(h, ty, cap)
+    arms = (('R ', dict(RELAX_MODE='sigma', RELAX_ALPHA=al)),
+            ('K1', dict(RELAX_MODE='const', RELAX_DX=dx, RELAX_DY=dy)),
+            ('K2', dict(RELAX_MODE='prop', RELAX_CW=min(tx / e_w, cap),
+                        RELAX_CH=min(ty / e_h, cap))))
+    det_means, trk_means = [], []
+    for name, env in arms:
+        m = load(**env)
+        m.relaxed_iou_distance(tracks, dets)
+        a, at = m._acc, m._acc_t
+        dpx = a['sum_pad_x'] / max(a['n_boxes'], 1)
+        tpx = at['sum_pad_x'] / max(at['n_boxes'], 1)
+        det_means.append(dpx)
+        trk_means.append(tpx)
+        print('    %s  검출 pad_x %.4f   트랙 pad_x %.4f   트랙/검출 %.3f'
+              % (name, dpx, tpx, tpx / max(dpx, 1e-9)))
+    d_spread = max(det_means) - min(det_means)
+    t_spread = max(trk_means) - min(trk_means)
+    # 검출 쪽 편차는 calibrate 가 0 으로 맞춰 주므로 비율을 찍으면 무의미하다.
+    print('    갈래 간 편차   검출 %.5f (calibrate 가 맞춘 쪽)   트랙 %.5f'
+          % (d_spread, t_spread))
+    print('    R 대 K2 트랙 pad 차이 %.2f%%  <- 판정 갈래끼리의 실제 어긋남'
+          % (100 * abs(trk_means[0] - trk_means[2]) / max(trk_means[0], 1e-9)))
+    # 검출 쪽은 calibrate 가 맞춰 주므로 0 에 가깝다. 트랙 쪽이 그보다 크게
+    # 벌어지면 '확장량 일치' 가 트랙에서는 성립하지 않는다는 뜻이다.
+    if t_spread > 0.05 * max(trk_means):
+        print('    WARN 트랙 쪽 확장량이 갈래마다 %.1f%% 까지 어긋난다.'
+              % (100 * t_spread / max(max(trk_means), 1e-9)))
+        print('         이 크기를 결과 해석에 명시할 것 (실패는 아니다).')
+    else:
+        print('    OK 트랙 쪽도 갈래 간 편차가 5%% 미만이다.')
+
     # ---- [4] 상한 --------------------------------------------------------
     m = load(RELAX_MODE='sigma', RELAX_ALPHA=50.0, RELAX_CAP=0.25)
     tlbr = np.asarray([d.tlbr for d in dets], dtype=float)
