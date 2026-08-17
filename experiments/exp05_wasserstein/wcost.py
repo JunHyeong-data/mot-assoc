@@ -86,6 +86,46 @@ def w2_matrix(t_xyxy, d_xyxy, t_var, d_var):
     return mean + cov
 
 
+def w2_matrix_norm(t_xyxy, d_xyxy, t_var, d_var):
+    """**크기 정규화** W^2 (실험 5b. 사전 선언은 PREREG-norm.md).
+
+    쌍마다 상자 크기로 좌표를 나눈 뒤 같은 W^2 을 쓴다. 아핀 사상
+    diag(1/s_x, 1/s_y) 를 두 가우시안에 적용한 것이라 **여전히 2-와서스타인**이다.
+
+        s_x = sqrt(w_t * w_d),  s_y = sqrt(h_t * h_d)      <- 쌍마다. 대칭
+        W^2 = (eps_x/s_x)^2 + (eps_y/s_y)^2
+              + (sqrt(st_x)-sqrt(sd_x))^2 / s_x^2
+              + (sqrt(st_y)-sqrt(sd_y))^2 / s_y^2
+
+    분산은 s^2 으로 나뉘므로 sqrt 차의 제곱은 s^2 으로 나뉜다 (축마다).
+
+    **한쪽 상자로 나누지 않고 기하평균을 쓴다.** 한쪽이면 비용이 비대칭이 되고
+    행/열 구조가 인위적으로 갈린다. IoU 가 대칭인 것과 맞춘다.
+
+    부수효과 (사전에 적어둔 것): tr(St)/s^2 이 더 이상 **행상수가 아니다** ->
+    할당에 도달하는 Sigma 정보가 실험 5 보다 **늘어난다**.
+    """
+    tw = np.maximum(t_xyxy[:, 2] - t_xyxy[:, 0], EPS)
+    th = np.maximum(t_xyxy[:, 3] - t_xyxy[:, 1], EPS)
+    dw = np.maximum(d_xyxy[:, 2] - d_xyxy[:, 0], EPS)
+    dh = np.maximum(d_xyxy[:, 3] - d_xyxy[:, 1], EPS)
+    sx2 = tw[:, None] * dw[None, :]          # s_x^2 = w_t * w_d
+    sy2 = th[:, None] * dh[None, :]
+
+    tcx = (t_xyxy[:, 0] + t_xyxy[:, 2]) / 2
+    tcy = (t_xyxy[:, 1] + t_xyxy[:, 3]) / 2
+    dcx = (d_xyxy[:, 0] + d_xyxy[:, 2]) / 2
+    dcy = (d_xyxy[:, 1] + d_xyxy[:, 3]) / 2
+    mean = ((tcx[:, None] - dcx[None, :]) ** 2 / sx2
+            + (tcy[:, None] - dcy[None, :]) ** 2 / sy2)
+
+    bx = (np.sqrt(np.maximum(t_var[:, None, 0], 0.0))
+          - np.sqrt(np.maximum(d_var[None, :, 0], 0.0))) ** 2 / sx2
+    by = (np.sqrt(np.maximum(t_var[:, None, 1], 0.0))
+          - np.sqrt(np.maximum(d_var[None, :, 1], 0.0))) ** 2 / sy2
+    return mean + bx + by
+
+
 def size_var(xyxy):
     """NWD 의 상자-가우시안: Sigma = diag(w^2, h^2)/4."""
     w = np.maximum(xyxy[:, 2] - xyxy[:, 0], EPS)

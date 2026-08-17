@@ -52,13 +52,15 @@ if hasattr(sys.stdout, "reconfigure"):
 from ultralytics.trackers.byte_tracker import BYTETracker   # noqa: E402
 from ultralytics.trackers.utils import matching             # noqa: E402
 
-from wcost import w2_matrix, size_var, match_scale, nwd_cost, solve_C  # noqa: E402
+from wcost import (w2_matrix, w2_matrix_norm, size_var,       # noqa: E402
+                   match_scale, nwd_cost, solve_C)
 
 CACHE = Path("data/exp05")
 OUTDIR = Path("data/exp05/tracks")
 SEQS = ["MOT17-02-FRCNN", "MOT17-04-FRCNN", "MOT17-05-FRCNN", "MOT17-09-FRCNN",
         "MOT17-10-FRCNN", "MOT17-11-FRCNN", "MOT17-13-FRCNN"]
-ARMS = ("iou", "w_dfl", "w_size", "w_nms")
+# wn_* 는 실험 5b (크기 정규화). 사전 선언은 PREREG-norm.md
+ARMS = ("iou", "w_dfl", "w_size", "w_nms", "wn_dfl", "wn_size")
 
 # ByteTrack 기본값. 갈래 사이에서 **바꾸지 않는다.**
 BASE = dict(tracker_type="bytetrack", track_high_thresh=0.25, track_low_thresh=0.1,
@@ -136,18 +138,18 @@ class WTracker(BYTETracker):
         if len(tr) >= 2 and tr.mean() > 0:
             self.cv_log.append(float(tr.std() / tr.mean()))
 
-        if self.arm == "w_size":
+        if self.arm in ("w_size", "wn_size"):
             d_var = size_var(d_box)
-        elif self.arm == "w_nms":
-            d_var = np.stack([[d.det_var[0], d.det_var[1]] for d in detections])
-        else:                                   # w_dfl
+        else:                                   # w_dfl / wn_dfl / w_nms
             d_var = np.stack([[d.det_var[0], d.det_var[1]] for d in detections])
 
         # 함정 1: Sigma_d 의 규모를 트랙 쪽에 맞춘다. 안 맞추면 갈래 간 차이가
-        # 정보가 아니라 규모가 된다.
+        # 정보가 아니라 규모가 된다. **정규화 갈래도 원래 px^2 좌표에서 한다** --
+        # 절차를 안 바꾼다 (PREREG-norm.md).
         d_var = match_scale(d_var, float(np.mean(t_var.sum(-1))))
 
-        w2 = w2_matrix(t_box, d_box, t_var, d_var)
+        f = w2_matrix_norm if self.arm.startswith("wn_") else w2_matrix
+        w2 = f(t_box, d_box, t_var, d_var)
         self.w2_log.append(w2.ravel())
         dists = nwd_cost(w2, self.C)
         if self.args.fuse_score:

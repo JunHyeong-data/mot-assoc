@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(errors="replace")
 
-from wcost import (bures_diag, bures_full, w2_matrix, size_var,   # noqa: E402
-                   match_scale, nwd_cost, solve_C)
+from wcost import (bures_diag, bures_full, w2_matrix, w2_matrix_norm,  # noqa: E402
+                   size_var, match_scale, nwd_cost, solve_C)
 
 rng = np.random.default_rng(0)
 ok = True
@@ -117,6 +117,52 @@ w_a = w2_matrix(tb, db, v_small, v_small)
 w_b = w2_matrix(tb, db, match_scale(v_big, tgt2), match_scale(v_big, tgt2))
 check("[8] 규모 맞춘 뒤 100배 차이가 사라진다",
       np.abs(w_a - w_b).max() < 1e-8, "max|diff| = %.2e" % np.abs(w_a - w_b).max())
+
+# ---- [9~11] 실험 5b: 크기 정규화 W^2 -----------------------------------
+print()
+print("-- 실험 5b: 크기 정규화 (PREREG-norm.md) " + "-" * 32)
+
+# [9] 척도 불변: 장면 전체를 alpha 배 하면 W^2_norm 은 그대로여야 한다.
+#     (원래 W^2 은 alpha^2 배가 된다 -- 그게 실험 5 가 진 이유의 가설이다)
+tb9 = np.array([[100.0, 100.0, 160.0, 280.0], [300.0, 50.0, 340.0, 170.0]])
+db9 = np.array([[106.0, 104.0, 166.0, 284.0], [297.0, 55.0, 337.0, 175.0]])
+tv9 = np.array([[4.0, 9.0], [1.0, 2.0]])
+dv9 = np.array([[2.0, 5.0], [3.0, 1.0]])
+for alpha in (2.0, 7.5):
+    n1 = w2_matrix_norm(tb9, db9, tv9, dv9)
+    n2 = w2_matrix_norm(tb9 * alpha, db9 * alpha, tv9 * alpha ** 2, dv9 * alpha ** 2)
+    r1 = w2_matrix(tb9, db9, tv9, dv9)
+    r2 = w2_matrix(tb9 * alpha, db9 * alpha, tv9 * alpha ** 2, dv9 * alpha ** 2)
+    check("[9] 척도 불변 (x%.1f): 정규화형" % alpha,
+          np.abs(n1 - n2).max() < 1e-9, "max|diff| = %.2e" % np.abs(n1 - n2).max())
+    check("[9b] 대조 - 원래형은 alpha^2 배가 된다",
+          np.abs(r2 - r1 * alpha ** 2).max() < 1e-6,
+          "%.1f -> %.1f (기대 %.1f)" % (r1[0, 0], r2[0, 0], r1[0, 0] * alpha ** 2))
+
+# [10] 정의 검산: 좌표를 s 로 나눈 뒤 원래 W^2 을 쓴 것과 같은가 (쌍마다)
+man = np.zeros((2, 2))
+for i in range(2):
+    for j in range(2):
+        sx = np.sqrt((tb9[i, 2] - tb9[i, 0]) * (db9[j, 2] - db9[j, 0]))
+        sy = np.sqrt((tb9[i, 3] - tb9[i, 1]) * (db9[j, 3] - db9[j, 1]))
+        tb = np.array([[tb9[i, 0] / sx, tb9[i, 1] / sy, tb9[i, 2] / sx, tb9[i, 3] / sy]])
+        db = np.array([[db9[j, 0] / sx, db9[j, 1] / sy, db9[j, 2] / sx, db9[j, 3] / sy]])
+        tv = np.array([[tv9[i, 0] / sx ** 2, tv9[i, 1] / sy ** 2]])
+        dv = np.array([[dv9[j, 0] / sx ** 2, dv9[j, 1] / sy ** 2]])
+        man[i, j] = w2_matrix(tb, db, tv, dv)[0, 0]
+auto = w2_matrix_norm(tb9, db9, tv9, dv9)
+check("[10] 정규화형 == 좌표 나눈 뒤 원래형", np.abs(auto - man).max() < 1e-9,
+      "max|diff| = %.2e" % np.abs(auto - man).max())
+
+# [11] 같은 상자/같은 Sigma 이면 0
+check("[11] 같은 상자면 W^2_norm = 0",
+      abs(float(w2_matrix_norm(tb9[:1], tb9[:1], tv9[:1], tv9[:1])[0, 0])) < 1e-12,
+      "W^2 = %.2e" % w2_matrix_norm(tb9[:1], tb9[:1], tv9[:1], tv9[:1])[0, 0])
+
+# [12] 대칭성: 트랙과 검출을 맞바꾸면 전치가 나와야 한다 (기하평균을 쓴 이유)
+sw = w2_matrix_norm(db9, tb9, dv9, tv9)
+check("[12] 대칭 (t<->d 바꾸면 전치)", np.abs(auto - sw.T).max() < 1e-12,
+      "max|diff| = %.2e" % np.abs(auto - sw.T).max())
 
 print()
 print("RESULT: %s" % ("PASS" if ok else "FAIL"))
