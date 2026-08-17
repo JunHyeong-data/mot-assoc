@@ -42,17 +42,18 @@ if hasattr(sys.stdout, "reconfigure"):
 from replay import SEQS                                       # noqa: E402
 from evaluate import build_data                               # noqa: E402
 from predictors import scene_stats                            # noqa: E402
+from grid import tag, jkey, canon                             # noqa: E402
 from tracker.eval.collections.hota import HOTA                # noqa: E402
 
 GRIDJSON = Path("data/exp06/grid.json")
 DEFAULT = 0.80
 BAND = 0.3                      # 판정폭. exp03/exp05/exp06[A] 와 같은 자
+MIN_FIT = 4                     # 예측변수 적합에 필요한 최소 유한 표본 (훈련 6개 중)
 # 사전 선언 목록 순서 그대로. 6~8 (0-based 5~7) 이 sigma 계열
 SIGMA_KEYS = ("sigma 중앙값 (px)", "**sigma/sqrt(area) 중앙값**", "sigma 산포 CV")
 
-
-def tag(th):
-    return "th%03d" % int(round(th * 100))
+# `tag` 와 `canon` 은 grid.py 에서 가져온다. 폴더 이름과 JSON 키의 부호화가
+# 두 파일에서 갈라져 조용히 어긋나던 결함을 막는다 (감사 지적).
 
 
 def snap(v, grid):
@@ -72,23 +73,42 @@ def fit_rule(x_tr, y_tr, grid):
 
 
 def combined_hota(assign, metric):
-    """시퀀스마다 다른 임계값의 트랙 파일을 모아 결합 HOTA (검출 수 가중)."""
-    per = {}
+    """시퀀스마다 다른 임계값의 트랙 파일을 모아 결합 HOTA (검출 수 가중).
+
+    **빠진 시퀀스가 있으면 죽는다.** exp02 에서 seqmap 헤더 누락으로 MOT17-02 가
+    조용히 빠져 dHOTA 가 -0.43 -> -0.62 로 바뀐 적이 있다. 갈래마다 시퀀스 집합이
+    다르면 그 차이를 빼는 것 자체가 무의미하므로 조용히 넘어가지 않는다.
+    """
+    per, missing = {}, []
     for seq, th in assign.items():
         d = build_data(seq, "_headroom/" + tag(th))
-        if d is not None:
+        if d is None:
+            missing.append("%s @ %s" % (seq, tag(th)))
+        else:
             per[seq] = metric.eval_sequence(d)
-    if not per:
-        return float("nan")
+    if missing:
+        raise SystemExit(
+            "트랙 파일이 없다: %s\n먼저 grid.py 를 돌려라. 조용히 빼고 집계하면 "
+            "갈래끼리 **다른 시퀀스 집합**을 비교하게 된다." % ", ".join(missing))
     return 100 * float(np.mean(metric.combine_sequences(per)["HOTA"]))
 
 
 def sign_test(d):
-    n = len(d)
-    win = int((np.asarray(d) > 0).sum())
+    """양측 부호검정. **차이 0 인 fold 는 뺀다.**
+
+    빼지 않으면 동률이 패배로 세어져 p 가 부풀려진다 (감사 지적). 반환하는 n 은
+    동률을 뺀 뒤의 수이고, 뺀 개수를 함께 돌려준다.
+    """
+    d = np.asarray(d, dtype=float)
+    nz = d[d != 0.0]
+    ties = len(d) - len(nz)
+    n = len(nz)
+    if n == 0:
+        return 0, 0, 1.0, ties
+    win = int((nz > 0).sum())
     k = max(win, n - win)
     p = 2.0 * sum(comb(n, i) for i in range(k, n + 1)) / 2.0 ** n
-    return win, n, min(p, 1.0)
+    return win, n, min(p, 1.0), ties
 
 
 def main():
@@ -96,9 +116,12 @@ def main():
         print("먼저 grid.py 를 돌려라: python experiments/exp06_levers/grid.py")
         return 1
     G = json.loads(GRIDJSON.read_text())
-    grid = G["grid"]
+    # 격자값과 JSON 키를 **같은 정본 함수**로 통과시킨다. 그래야 `grid` 에서 온
+    # 임계값으로 `H[s]` 를 찾을 때 부동소수 표현이 갈라지지 않는다.
+    grid = [canon(t) for t in G["grid"]]
     # per_seq[seq][th] -> HOTA
-    H = {s: {float(t): v for t, v in G["per_seq"][s].items()} for s in G["seqs"]}
+    H = {s: {canon(float(t)): v for t, v in G["per_seq"][s].items()}
+         for s in G["seqs"]}
     seqs = [s for s in SEQS if s in H]
 
     best = {s: max(H[s], key=H[s].get) for s in seqs}
@@ -132,20 +155,28 @@ def main():
              "HOTA", "HOTA", "HOTA", "HOTA"))
     print("-" * 96)
 
-    picks, rows = [], {}
+    picks, rows, weak = [], {}, {}
     assign = {"R0": {}, "R1": {}, "R2": {}, "R3": {}}
     for s in seqs:
         tr = [t for t in seqs if t != s]
         y_tr = [best[t] for t in tr]
 
         # 예측변수 선택: 훈련 6개만으로. 동률이면 목록 앞선 것
+        #
+        # NaN 처리 (감사 지적): 예전에는 **하나라도** NaN 이면 spearmanr 가
+        # NaN 을 돌려주고 그게 점수 0 이 되어 그 후보가 조용히 사라졌다.
+        # 사전 선언은 후보 9개인데 실제로는 8개로 도는 일이 생긴다. 이제
+        # 유한한 짝만 골라 적합하고, 표본이 모자라면 **세어서 보고한다.**
         scoreboard = []
         for k in keys:
             x = np.array([stats[t][k] for t in tr], float)
-            if np.all(np.isnan(x)) or np.nanstd(x) == 0:
+            y = np.asarray(y_tr, float)
+            ok = np.isfinite(x)
+            if ok.sum() < MIN_FIT or np.std(x[ok]) == 0:
                 scoreboard.append(0.0)
+                weak[k] = weak.get(k, 0) + 1
                 continue
-            r, _ = spearmanr(x, y_tr)
+            r, _ = spearmanr(x[ok], y[ok])
             scoreboard.append(0.0 if np.isnan(r) else abs(float(r)))
         kbest = keys[int(np.argmax(scoreboard))]
         picks.append(kbest)
@@ -154,7 +185,7 @@ def main():
         m, lo_v, hi_v = fit_rule(x_tr, y_tr, grid)
         th2 = hi_v if stats[s][kbest] > m else lo_v
 
-        th = {"R0": DEFAULT,
+        th = {"R0": canon(DEFAULT),
               "R1": snap(float(np.median(y_tr)), grid),
               "R2": th2,
               "R3": best[s]}
@@ -187,7 +218,7 @@ def main():
         print("%-34s %10.3f %10.3f" % (label[a], comb_h[a], unw[a]))
 
     # 검산: R0 는 grid.json 의 0.80 결합값과 같아야 한다
-    ref = float(G["combined"]["0.80"])
+    ref = float(G["combined"][jkey(DEFAULT)])
     print()
     print("  검산: R0 결합 %.3f vs grid.json 의 0.80 %.3f  %s"
           % (comb_h["R0"], ref, "OK" if abs(comb_h["R0"] - ref) < 1e-6 else "** 불일치 **"))
@@ -205,13 +236,14 @@ def main():
 
     d1 = [rows[s][1]["R2"] - rows[s][1]["R0"] for s in seqs]
     d2 = [rows[s][1]["R2"] - rows[s][1]["R1"] for s in seqs]
-    w1, n1, p1 = sign_test(d1)
-    w2, n2, p2 = sign_test(d2)
+    w1, n1, p1, t1 = sign_test(d1)
+    w2, n2, p2, t2 = sign_test(d2)
+    tie = lambda t: ("  (동률 %d 제외)" % t) if t else ""
 
-    print("  [1] 주 종말점   R2 - R0 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f"
-          % (e1, e1u, w1, n1, p1))
-    print("  [2] 기여 귀속   R2 - R1 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f"
-          % (e2, e2u, w2, n2, p2))
+    print("  [1] 주 종말점   R2 - R0 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f%s"
+          % (e1, e1u, w1, n1, p1, tie(t1)))
+    print("  [2] 기여 귀속   R2 - R1 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f%s"
+          % (e2, e2u, w2, n2, p2, tie(t2)))
     print("  [3] 신탁 상한   R3 - R0 = %+.3f  (참고. 주장 아님)" % e3)
 
     # 아래 두 줄은 **결과를 보고 추가했다.** 판정 로직은 안 건드렸다 --
@@ -222,6 +254,12 @@ def main():
     if e3 > 0:
         print("      신탁 회수율: 가중 %.0f%%, 가중 없음 %.0f%%   (R2-R0 을 R3-R0 으로 나눈 것)"
               % (100 * e1 / e3, 100 * e1u / max(unw["R3"] - unw["R0"], 1e-9)))
+
+    if weak:
+        print()
+        print("      ** 적합 표본이 모자라 점수 0 이 된 후보가 있다 (사전 선언은 9개) **")
+        for k, v in sorted(weak.items(), key=lambda z: -z[1]):
+            print("         %-30s %d/%d fold" % (k[:30], v, len(seqs)))
 
     nsig = sum(1 for k in picks if k in SIGMA_KEYS)
     print("  [4] sigma 계열이 뽑힌 fold = %d/%d" % (nsig, len(picks)))
