@@ -40,12 +40,18 @@ if hasattr(sys.stdout, "reconfigure"):
 from replay import load, SEQS                               # noqa: E402
 
 # headroom.py 가 낸 시퀀스별 최적 임계값 (재현: python experiments/exp06_levers/headroom.py)
+#
+# **정정 (LOSO 사전 선언대로).** headroom.py 의 그리드는 상단이 0.95 였는데
+# MOT17-10 과 -13 의 최적이 거기 붙어 있었다. 0.98 을 넣으니 **MOT17-13 이
+# 0.95 -> 0.98 로 옮겨가고 이득이 1.73 -> 4.66 으로 커졌다** (여전히 그리드 끝이다).
+# 나머지 여섯은 그대로다. 손으로 옮겨 적는 대신 `grid.py` 가 표를 JSON 으로 남긴다:
+#   data/exp06/grid.json  <- loso.py 는 이쪽을 읽는다
 BEST = {"MOT17-02-FRCNN": 0.85, "MOT17-04-FRCNN": 0.90, "MOT17-05-FRCNN": 0.75,
         "MOT17-09-FRCNN": 0.75, "MOT17-10-FRCNN": 0.95, "MOT17-11-FRCNN": 0.70,
-        "MOT17-13-FRCNN": 0.95}
+        "MOT17-13-FRCNN": 0.98}
 GAIN = {"MOT17-02-FRCNN": 0.46, "MOT17-04-FRCNN": 0.35, "MOT17-05-FRCNN": 0.55,
         "MOT17-09-FRCNN": 0.20, "MOT17-10-FRCNN": 0.65, "MOT17-11-FRCNN": 3.57,
-        "MOT17-13-FRCNN": 1.73}
+        "MOT17-13-FRCNN": 4.66}
 
 
 def scene_stats(seq):
