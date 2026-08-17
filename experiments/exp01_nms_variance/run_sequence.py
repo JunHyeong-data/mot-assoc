@@ -16,12 +16,27 @@
     ultralytics 는 NMS 결과만 돌려주고 무엇이 억제됐는지는 버린다.
     그래서 `non_max_suppression` 을 가로채 raw prediction 을 붙잡고,
     살아남은 상자마다 IoU >= iou_thres 인 raw 후보를 직접 모은다.
-    NMS 가 억제하는 조건이 정확히 이것이다.
+    포크(`DLR-MI/nms_var`)의 커널이 쓰는 정의와 같다 -- 살아남은 상자 자신도
+    포함되고, 한 후보가 여러 군집에 들어갈 수 있다.
+
+    **후보 풀이 NMS 가 본 것보다 원리적으로 조금 넓다.** 여기서는 `person >= CONF`
+    인 앵커를 전부 담는데, ultralytics NMS 는 `classes=[0]` 에서 **argmax 클래스가
+    person 인** 앵커만 남긴다. 즉 우리 풀은 상위집합이다.
+
+    **측정했다 (MOT17-02 25프레임)**: 풀 크기 3919 대 3918 (**0.026% 차이**),
+    그리고 s_c 는 **438개 검출 전부에서 최대 차이 0.0** 이었다. 보행자 장면에서
+    person 점수가 0.10 을 넘는데 argmax 가 다른 앵커는 사실상 없다.
+    **결과에 영향 없음. 확인 완료.**
 
 좌표계 주의:
     가로챈 시점의 상자는 letterbox 좌표(640 기준)다. 원본 좌표가 아니다.
-    그러나 주 종말점은 s_c / h 로 무차원이고 letterbox 는 x,y 를 같은 배율로
-    줄이므로 비율이 보존된다. 따라서 letterbox 좌표에서 계산해도 된다.
+    주 종말점 s_c / h 는 무차원이고 letterbox 는 x,y 를 같은 배율로 줄이므로
+    비율이 보존된다. 따라서 **스칼라 종말점은** letterbox 좌표에서 계산해도 된다.
+
+    그러나 **공분산 Sigma_d 는 다르다.** 오차 eps 는 원본 좌표에서 재므로
+    eps^T Sigma_d^-1 eps 를 letterbox 좌표의 Sigma_d 로 계산하면 단위가 어긋나
+    보정 배율이 gain^-2 만큼 부풀어 나온다. 반드시 원본 좌표로 옮겨서 저장한다.
+    (2026-08-17 정정. 아래 gain 주석 참고.)
 
 사용법:
     python experiments/exp01_nms_variance/run_sequence.py [시퀀스명] [최대프레임]
@@ -113,17 +128,12 @@ def patched_nms(prediction, *a, **kw):
 
         idx = keepi[0].long().cpu().numpy()          # 원본 anchor 인덱스, out 과 같은 순서
         kept = boxes[idx]
-        det_o = out[0][:, :4].cpu().numpy() if len(out[0]) else np.zeros((0, 4))
 
-        # letterbox -> 원본 배율. NMS 출력은 원본 좌표, kept 는 letterbox 좌표다.
-        # 공분산은 평행이동에 불변이므로 배율만 알면 원본 좌표로 옮길 수 있다.
-        r = 1.0
-        if len(det_o) == len(kept) and len(kept):
-            hl = kept[:, 3] - kept[:, 1]
-            ho = det_o[:, 3] - det_o[:, 1]
-            good = hl > 1e-6
-            if good.any():
-                r = float(np.median(ho[good] / hl[good]))
+        # **배율은 여기서 잴 수 없다.** ultralytics 는 NMS 가 돌아온 *뒤에*
+        # construct_results 에서 scale_boxes 를 건다. 그래서 이 시점의 out 상자는
+        # 아직 letterbox 좌표이고, kept 와 나누면 배율이 언제나 정확히 1.0 이 나온다.
+        # 오류도 경고도 없이 조용히 1.0 이다. (2026-08-17 발견)
+        # 배율은 아래 주 루프에서 r.boxes.xyxy(원본 좌표)와 대조해 잰다.
 
         stats = []
         if len(kept) and len(pool_box):
@@ -137,8 +147,9 @@ def patched_nms(prediction, *a, **kw):
                     cy = (c[:, 1] + c[:, 3]) / 2
                     s_c = float(np.hypot(cx.std(ddof=1), cy.std(ddof=1)) / h)
                     s_h = float((c[:, 3] - c[:, 1]).std(ddof=1) / h)
-                    # 후보 중심의 2x2 공분산을 원본 좌표로 (배율^2 을 곱한다)
-                    C2 = np.cov(np.vstack([cx, cy])) * (r ** 2)
+                    # 후보 중심의 2x2 공분산. **letterbox 좌표 그대로 둔다.**
+                    # 원본 좌표 환산은 주 루프에서 배율을 잰 뒤에 한다.
+                    C2 = np.cov(np.vstack([cx, cy]))
                     sxx, sxy, syy = float(C2[0, 0]), float(C2[0, 1]), float(C2[1, 1])
                 else:
                     s_c = s_h = sxx = sxy = syy = np.nan
@@ -189,6 +200,7 @@ print(f"  프레임 {len(imgs)}장 처리 (시퀀스 전체 {len(sorted((ROOT / 
 model = YOLO(MODEL)
 rows = []
 n_matched = n_det = 0
+gains = []
 for k, ip in enumerate(imgs):
     CAPTURED.clear()
     r = model.predict(source=str(ip), conf=CONF, iou=IOU_NMS, classes=[0],
@@ -199,6 +211,16 @@ for k, ip in enumerate(imgs):
     g = gt.get(k + 1)
     if g is None or not len(det) or len(stats) != len(det):
         continue
+
+    # letterbox -> 원본 배율. det 는 원본 좌표, stats 의 h 는 letterbox 좌표이고
+    # 둘은 **같은 상자**다. 그러니 높이 비가 곧 배율이다. 가장자리 상자는
+    # scale_boxes 가 이미지 경계로 잘라내므로 개별 비가 어긋날 수 있다 -> 중앙값.
+    hl = np.array([s[3] for s in stats], dtype=float)
+    ho = det[:, 3] - det[:, 1]
+    okg = hl > 1e-6
+    gain = float(np.median(ho[okg] / hl[okg])) if okg.any() else 1.0
+    gains.append(gain)
+
     M = iou_mat(det, g[:, :4])
     ri, ci = linear_sum_assignment(-M)
     for i, j in zip(ri, ci):
@@ -206,12 +228,30 @@ for k, ip in enumerate(imgs):
             continue
         n_matched += 1
         s_c, s_h, ncand, h, _, sxx, sxy, syy = stats[i]
+        # 원본 좌표로 옮긴다. 길이는 gain, 공분산은 gain^2.
+        # eps(dcx, dcy) 가 원본 좌표라서 Sigma_d 도 원본이어야 z^2 이 무차원이다.
+        h *= gain
+        sxx *= gain ** 2
+        sxy *= gain ** 2
+        syy *= gain ** 2
         dcx = (det[i, 0] + det[i, 2]) / 2 - (g[j, 0] + g[j, 2]) / 2
         dcy = (det[i, 1] + det[i, 3]) / 2 - (g[j, 1] + g[j, 3]) / 2
         rows.append((s_c, s_h, ncand, h, 1.0 - M[i, j], g[j, 4], k + 1,
                      sxx, sxy, syy, dcx, dcy))
 
 print(f"  검출 {n_det}개, GT 매칭 {n_matched}개 (매칭률 {n_matched / max(n_det,1):.1%})")
+
+# 배율 검산. letterbox 는 min(imgsz/원본) 배율로 줄이므로 해석해가 있다.
+# 실측 중앙값과 해석해가 어긋나면 계측 어딘가가 틀린 것이다.
+import cv2                                            # noqa: E402
+_h0, _w0 = cv2.imread(str(imgs[0])).shape[:2]
+_gh, _gw = (IMGSZ, IMGSZ) if isinstance(IMGSZ, int) else IMGSZ
+_expect = 1.0 / min(_gh / _h0, _gw / _w0)
+g_med = float(np.median(gains)) if gains else float("nan")
+print(f"  letterbox->원본 배율: 실측 중앙값 {g_med:.4f}  해석해 {_expect:.4f}  "
+      f"(원본 {_w0}x{_h0}, imgsz {IMGSZ})")
+if not np.isfinite(g_med) or abs(g_med - _expect) > 0.02 * _expect:
+    print("  *** 경고: 배율이 해석해와 어긋난다. Sigma_d 단위를 믿지 말 것. ***")
 print()
 
 A = np.array(rows, dtype=float)
@@ -225,7 +265,8 @@ out_npz = Path("data/exp01") / f"{SEQ}{TAG}.npz"
 out_npz.parent.mkdir(parents=True, exist_ok=True)
 np.savez(out_npz, s_c=sc, s_h=sh, ncand=ncand, h=hh, err=err, vis=vis, frame=frame,
          sxx=sxx, sxy=sxy, syy=syy, dcx=dcx, dcy=dcy,
-         n_det=n_det, conf=CONF, iou_nms=IOU_NMS, min_cand=MIN_CAND)
+         n_det=n_det, conf=CONF, iou_nms=IOU_NMS, min_cand=MIN_CAND,
+         gain=g_med, coords="original")   # h, sxx.. 는 원본 좌표 (s_c 는 무차원)
 print(f"  원자료 저장: {out_npz}  (재분석에 검출기 재실행 불필요)")
 print()
 print("=" * 72)

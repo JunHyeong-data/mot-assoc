@@ -104,7 +104,14 @@ print()
 
 
 def run(**over):
-    """캐시된 검출을 주어진 설정의 트래커에 재생하고 집계를 낸다."""
+    """캐시된 검출을 주어진 설정의 트래커에 재생하고 집계를 낸다.
+
+    난수를 설정마다 되감는다. 안 되감으면 track_buffer 갈래들이 서로 다른
+    교란 표본을 쓰게 되어, 민감도 열의 차이에 난수 잡음이 섞인다. 검출은
+    캐시라 같은데 교란만 다른 것은 비교를 흐린다. (2026-08-17)
+    """
+    global rng
+    rng = np.random.default_rng(0)
     LOG.clear()
     args = SimpleNamespace(**{**BASE, **over})
     tr = BYTETracker(args, frame_rate=30)
@@ -134,8 +141,11 @@ print("  " + "-" * 62)
 for tb in (1, 5, 15, 30, 60, 120):
     r = run(track_buffer=tb)
     tag = "  <- 기본값" if tb == 30 else ""
-    print(f"  {tb:>13}{r['medM']:>8.0f}{r['medN']:>8.0f}{f'{r[chr(109)+chr(103)+chr(116)]:.1%}':>9}"
-          f"{f'{r[chr(99)+chr(117)+chr(116)]:.1%}':>9}{f'{r[chr(115)+chr(101)+chr(110)+chr(115)]:.1%}':>14}{tag}")
+    mgt_s = f"{r['mgt']:.1%}"
+    cut_s = f"{r['cut']:.1%}"
+    sens_s = f"{r['sens']:.1%}"
+    print(f"  {tb:>13}{r['medM']:>8.0f}{r['medN']:>8.0f}"
+          f"{mgt_s:>9}{cut_s:>9}{sens_s:>14}{tag}")
 
 print()
 print("  버퍼를 1 로 줄여도 M>N 이 크게 남으면, M>N 은 버퍼 부작용이 아니라")
@@ -151,8 +161,11 @@ print(f"  {'fuse_score':>12}{'2단계 최적쌍':>14}{'채택':>8}{'게이트밀
 print("  " + "-" * 74)
 for fs in (True, False):
     r = run(fuse_score=fs)
-    print(f"  {str(fs):>12}{r['s2opt']:>14}{r['s2kept']:>8}{f'{r[chr(115)+chr(50)+chr(103)+chr(97)+chr(116)+chr(101)]:.1%}':>12}"
-          f"{f'{r[chr(109)+chr(103)+chr(116)]:.1%}':>12}{f'{r[chr(99)+chr(117)+chr(116)]:.1%}':>14}")
+    g_s = f"{r['s2gate']:.1%}"
+    mgt_s = f"{r['mgt']:.1%}"
+    cut_s = f"{r['cut']:.1%}"
+    print(f"  {str(fs):>12}{r['s2opt']:>14}{r['s2kept']:>8}"
+          f"{g_s:>12}{mgt_s:>12}{cut_s:>14}")
 
 print()
 print("  fuse_score=True 에서 채택이 0 이고 False 에서 0 이 아니면,")

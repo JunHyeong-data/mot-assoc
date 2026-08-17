@@ -158,9 +158,9 @@ for th in sorted(by_stage, reverse=True):
           f"{f'{cut / max(opt, 1):.1%}':>9}{f'{gate:.1%}':>12}")
 opt = sum(r["opt"] for r in log); kept = sum(r["kept"] for r in log)
 print("  " + "-" * 72)
-print(f"  {'전체':>22}{opt:>9}{kept:>8}{opt - kept:>8}"
-      f"{f'{(opt - kept) / max(opt, 1):.1%}':>9}"
-      f"{f'{np.mean([r[chr(103)+chr(97)+chr(116)+chr(101)] for r in log]):.1%}':>12}")
+_cut_s = f"{(opt - kept) / max(opt, 1):.1%}"
+_gate_s = f"{np.mean([r['gate'] for r in log]):.1%}"
+print(f"  {'전체':>22}{opt:>9}{kept:>8}{opt - kept:>8}{_cut_s:>9}{_gate_s:>12}")
 
 print()
 print("=" * 74)

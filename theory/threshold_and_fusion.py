@@ -108,11 +108,18 @@ print("  곱 (fuse_score, 기본값 True) : cost = 1 - IoU_ij * s_j")
 print("  합 (흔한 대안)               : cost = (1 - IoU_ij) + k(1 - s_j)")
 print("  신뢰도 미사용 비용 대비 잔차가 얼마나 변하는가.")
 print()
-print(f"  {'':20}{'|dR| 평균':>14}{'할당 변경(임계 0.8)':>22}")
-print("  " + "-" * 56)
+print("  **정방(M=N)에서 잰다.** 합 형태는 순수 '열'상수인데 열상수 불변성은")
+print("  M >= N 조건부다 ([A], assignment_invariance.py). M<N 에서 재면 할당 변경이")
+print("  임계값 때문인지 모양 때문인지 섞인다. 실제로 12x18 에서는 임계값 없이도")
+print("  20/500 이 바뀌었다. 그래서 모양을 M=N 으로 두고 임계값만 남긴다.")
+print("  (2026-08-17 정정. 그전에는 12x18 로 재고 전부 임계값 탓으로 적었다.)")
+print()
+print(f"  {'':20}{'|dR| 평균':>14}{'변경(임계 없음)':>18}{'변경(임계 0.8)':>18}")
+print("  " + "-" * 72)
 
-M, N = 12, 18
-dr_mul, dr_add, ch_mul, ch_add = [], [], 0, 0
+M, N = 15, 15
+dr_mul, dr_add = [], []
+ch_mul, ch_add, nt_mul, nt_add = 0, 0, 0, 0
 for _ in range(RUNS):
     T, D = scene(M, N)
     iou = iou_matrix(T, D)
@@ -122,19 +129,27 @@ for _ in range(RUNS):
     add = base + LAM * (1 - s)[None, :]
     dr_mul.append(np.abs(residual(mul) - residual(base)).mean())
     dr_add.append(np.abs(residual(add) - residual(base)).mean())
-    b = ul_match(base, THRESH)
-    ch_mul += ul_match(mul, THRESH) != b
-    ch_add += ul_match(add, THRESH) != b
+    b_inf, b_th = ul_match(base, np.inf), ul_match(base, THRESH)
+    nt_mul += ul_match(mul, np.inf) != b_inf
+    nt_add += ul_match(add, np.inf) != b_inf
+    ch_mul += ul_match(mul, THRESH) != b_th
+    ch_add += ul_match(add, THRESH) != b_th
 
-print(f"  {'곱 (fuse_score)':20}{np.mean(dr_mul):>14.2e}{f'{ch_mul}/{RUNS}':>22}")
-print(f"  {'합 (순수 열상수)':20}{np.mean(dr_add):>14.2e}{f'{ch_add}/{RUNS}':>22}")
+print(f"  {'곱 (fuse_score)':20}{np.mean(dr_mul):>14.2e}"
+      f"{f'{nt_mul}/{RUNS}':>18}{f'{ch_mul}/{RUNS}':>18}")
+print(f"  {'합 (순수 열상수)':20}{np.mean(dr_add):>14.2e}"
+      f"{f'{nt_add}/{RUNS}':>18}{f'{ch_add}/{RUNS}':>18}")
 
 print()
-print("  -> 합으로 넣으면 잔차 변화가 2e-16, 기계정밀도다. 할당 논리에")
-print("     아무것도 전달하지 못한다. 그런데도 할당은 바뀐다 -- 임계값 때문이다.")
+print("  -> 합으로 넣으면 잔차 변화가 2e-16, 기계정밀도다. 임계값이 없으면")
+print("     할당이 단 한 건도 안 바뀐다 -- 할당 논리에 아무것도 전달하지 못한다.")
+print("     그런데 임계값을 붙이면 바뀐다. **오직 임계값 경로로만** 바뀐다.")
 print("     즉 '효과가 있었다' 를 보고 '정보가 전달됐다' 고 결론내면 안 된다.")
-print("  -> 곱으로 넣으면 잔차 자체가 변한다. 신뢰도가 IoU 와 상호작용해")
-print("     비분리 성분을 만든다.")
+print("  -> 곱으로 넣으면 잔차 자체가 변한다 (2e-16 대 3e-2, 열네 자릿수 차이).")
+print("     신뢰도가 IoU 와 상호작용해 비분리 성분을 만든다.")
+print("     단 잔차가 변한다고 할당이 자주 뒤집히지는 않는다 -- 임계값 없이는")
+print("     1/500 뿐이다. 도달 여부와 뒤집힘 빈도는 다른 문제다. 여기서 보이는")
+print("     것은 '통로가 열려 있다' 이지 '많이 바뀐다' 가 아니다.")
 print()
 print("설계 제약: 검출별 불확실성을 스칼라로 '더하는' 형태는 원리적으로 못 쓴다.")
 print("          트랙과 상호작용하는 형태여야 한다. ByteTrack 이 곱을 쓴 것은")

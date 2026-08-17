@@ -3,12 +3,17 @@
 스칼라 산포 대신 공분산 Sigma_d 로 묻는다.
 
 왜 바꾸나
-  run_sequence.py 의 주 종말점은 스칼라 s_c 를 상자높이 h 로 나눈 값이었다.
-  그런데 h 를 통제한 편상관이 0.044 로, 원시 상관의 대부분이 크기 교란이었다.
-  정규화가 불완전한 것이다.
+  run_sequence.py 의 주 종말점은 스칼라 s_c 를 상자높이 h 로 나눈 값이다.
+  h 로 나누는 정규화가 크기 교란을 다 걷어내는지 확실하지 않다.
 
-  공분산을 쓰면 이 문제가 원리적으로 사라진다. Sigma_d 는 오차 eps 와 단위가
+  공분산을 쓰면 그 걱정이 원리적으로 사라진다. Sigma_d 는 오차 eps 와 단위가
   같으므로 eps^T Sigma_d^-1 eps 가 무차원이고, 크기는 저절로 상쇄된다.
+
+  * 정정 (2026-08-16): 원래 이 자리에 "h 통제 편상관이 0.044 라 원시 상관의
+    대부분이 크기 교란이었다" 고 적혀 있었다. **그 0.044 는 NMS in-place 버그의
+    산물이고 고친 값은 +0.336 이다.** 크기 교란은 0.119 뿐이다. 공분산으로 가는
+    동기는 남지만("무차원이라 깨끗하다"), '스칼라가 실패했으니 갈아탄다' 는
+    서술은 틀렸다. 스칼라 종말점은 관문을 통과했다.
 
   이론과도 이어진다. mahalanobis_vs_bhattacharyya.py 에서 검출 불확실성이
   할당에 도달하는 유일한 통로가 0.5 ln|(Sigma_t + Sigma_d)/2| 였다. 필요한 것은
@@ -22,7 +27,10 @@
   진다면: NMS 후보 공분산은 쓸 수 없는 불확실성 소스다. 다른 소스를 찾아야 한다.
 
 사용법:
-    python experiments/exp01_nms_variance/analyze_covariance.py [시퀀스명]
+    python experiments/exp01_nms_variance/analyze_covariance.py [시퀀스명] [TAG]
+
+    TAG 는 run_all.py 의 갈래 접미사다 (빈칸 | -m60 | -fork).
+        analyze_covariance.py MOT17-02-FRCNN -fork
 """
 import sys
 from pathlib import Path
@@ -34,11 +42,18 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(errors="replace")
 
 SEQ = sys.argv[1] if len(sys.argv) > 1 else "MOT17-02-FRCNN"
-NPZ = Path("data/exp01") / f"{SEQ}.npz"
+TAG = sys.argv[2] if len(sys.argv) > 2 else ""
+NPZ = Path("data/exp01") / f"{SEQ}{TAG}.npz"
 if not NPZ.exists():
     sys.exit(f"{NPZ} 가 없다. 먼저 run_sequence.py 를 돌릴 것.")
 
 d = np.load(NPZ)
+# Sigma_d 가 어느 좌표계인지 확인한다. 원본 좌표가 아니면 [1] 의 보정 배율이
+# letterbox gain^2 만큼 부풀어 나온다. 옛 npz 에는 이 필드가 없다.
+_coords = str(d["coords"]) if "coords" in d else "unknown"
+if _coords != "original":
+    print("*** 경고: 이 npz 의 Sigma_d 좌표계가 '%s' 다. [1] 의 보정 배율을"
+          " 믿지 말 것. run_all.py 로 다시 낼 것. ***" % _coords)
 sxx, sxy, syy = d["sxx"], d["sxy"], d["syy"]
 dcx, dcy, hh, vis = d["dcx"], d["dcy"], d["h"], d["vis"]
 frame = d["frame"]
@@ -54,7 +69,7 @@ det2 = sxx * syy - sxy ** 2
 n = len(e)
 
 print("=" * 72)
-print(f"공분산 기반 분석 -- {SEQ}")
+print(f"공분산 기반 분석 -- {SEQ}{TAG}   (좌표계 {_coords})")
 print("=" * 72)
 print(f"  사용 가능 표본 {n} (전체 {len(d['sxx'])}, 퇴화 공분산 제외)")
 print(f"  오차 중앙값 |eps| = {np.median(np.hypot(*e.T)):.2f} px")

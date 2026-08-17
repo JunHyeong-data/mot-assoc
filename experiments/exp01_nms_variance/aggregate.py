@@ -33,12 +33,18 @@ def partial_spearman(x, y, z):
 
 
 rows = []
+stale = []
 for s in SEQS:
     p = Path("data/exp01") / f"{s}-FRCNN{TAG}.npz"
     if not p.exists():
         print("없음: %s" % p)
         continue
     d = np.load(p)
+    # Sigma_d 는 원본 좌표여야 한다. letterbox 좌표로 남아 있으면 chi2 배율이
+    # gain^2 만큼 부풀어 나온다 (2026-08-17 에 잡은 버그). 옛 npz 는 필드가 없다.
+    coords = str(d["coords"]) if "coords" in d else "unknown"
+    if coords != "original":
+        stale.append("%s(%s)" % (s, coords))
     sxx, sxy, syy = d["sxx"], d["sxy"], d["syy"]
     det2 = sxx * syy - sxy ** 2
     ok = ~np.isnan(sxx) & (det2 > 1e-9) & (sxx > 1e-9) & (syy > 1e-9)
@@ -54,6 +60,10 @@ for s in SEQS:
                  np.median(z2) / CHI2_MED, 100 * np.mean(z2 <= CHI2_95)))
 
 print("검출기: %s" % ("저자 ablation_17 + 포크 NMS" if TAG else "yolov8m COCO + exp01 설정"))
+if stale:
+    print()
+    print("*** 경고: Sigma_d 가 원본 좌표가 아닌 npz 가 있다 -> %s" % ", ".join(stale))
+    print("    chi2 배율/std 열이 letterbox gain^2 만큼 부풀어 있다. run_all.py 로 다시 낼 것.")
 print()
 print("시퀀스      n     rho     편상관   z2중앙   chi2배율  std배  95%안")
 for s, n, r, pc, z, ratio, in95 in rows:
