@@ -11,15 +11,16 @@
 | # | 논문 | 상태 | 노트 |
 |---|---|---|---|
 | 1 | SORT (Bewley et al., ICIP 2016) | 정독 완료 | `sort.md` |
-| 2 | DeepSORT (Wojke et al., ICIP 2017) | | |
-| 3 | ByteTrack (Zhang et al., ECCV 2022) | | |
+| 2 | DeepSORT (Wojke et al., ICIP 2017) | **정독 완료** | `primary_reading.md` 2절 |
+| 3 | ByteTrack (Zhang et al., ECCV 2022) | **정독 완료** | `primary_reading.md` 1절 |
 | 4 | OC-SORT (Cao et al., CVPR 2023) | | |
 | 5 | UCMCTrack (Yi et al., AAAI 2024) | | |
 | 6 | Bae & Yoon, CVPR 2014 — Tracklet Confidence | | |
 | 7 | **Bae & Yoon, TPAMI 40(3) 2018 — Confidence-Based Data Association** | 초록 확인 | `uncertainty_related_work.md` |
 | 8 | **UTrack (Solano-Carrillo et al., ECCV24 UnCV)** | 정독 + **재현 완료** | `../experiments/exp02_utrack_replication/` |
 | 9 | **UncertaintyTrack (Lee & Waslander, arXiv:2402.12303)** | 절제표 확인 | `uncertainty_related_work.md` |
-| 10 | Localization-Guided Track (arXiv:2309.09765) / Deep LG-Track (2504.01457) | 미독 | |
+| 10 | Localization-Guided Track (arXiv:2309.09765) | **정독 완료** | `primary_reading.md` 3절 |
+| 10b | Deep LG-Track (2504.01457) | 미독 | 후속. 캐스케이드 변경 여부 확인 필요 |
 
 **7~10 은 `uncertainty_related_work.md` 에서 "불확실성이 어느 통로로 할당에
 도달하는가" 라는 네 번째 질문으로 함께 대조한다.** 그 표가 이 연구의 논지다.
@@ -60,3 +61,18 @@
 - tracklet confidence 를 detectability 와 continuity 로 정의하는 방식
 - confidence 값에 따라 연관을 어떻게 나누는지
 - confidence 를 **비용 안에 넣는 것**과 **문제를 쪼개는 것**의 차이
+
+---
+
+## 2026-08-18 — **원문 정독으로 숙제 하나가 풀렸다**
+
+위 "ByteTrack" 항목에 이렇게 적어 뒀었다:
+
+> *"논문에서 확인할 것: 위 `fuse_score` 식이 논문에 있나, 구현에만 있나.
+> 구현에만 있다면 근거 없이 표준이 된 설계이고, 그 자체가 이 연구의 소재다."*
+
+**확인했다. 구현에만 있다.** 전문 64,480자에서 `fuse` 는 1회(무관한 문맥),
+`multiply`·`weighted by` 는 0회. 논문은 점수를 **높음/낮음 문지기**로만 쓰고
+Similarity#1 은 *"IoU or Re-ID feature distances"*, Similarity#2 는 **IoU 단독**이다.
+
+상세는 `primary_reading.md`.
