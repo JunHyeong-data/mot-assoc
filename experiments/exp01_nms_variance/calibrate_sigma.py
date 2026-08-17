@@ -139,7 +139,8 @@ def main():
     print("실험 1e -- leave-one-sequence-out 보정 (검출기 yolov8m, 200~299프레임)")
     print("=" * 88)
     print("적합: 6시퀀스   평가: 나머지 1시퀀스 (본 적 없는 장면)")
-    print("주 종말점 coverage = z^2 <= chi2(2)_95%(%.2f) 인 비율. 목표 95%%" % Q95)
+    # '%(' 는 매핑 키 참조로 파싱된다. 반드시 '%%(' 로 이스케이프할 것.
+    print("주 종말점 coverage = z^2 <= chi2(2)_95%% (%.2f) 인 비율. 목표 95%%" % Q95)
     print()
 
     res = {name: {"cov": [], "nll": []} for name, _ in MODELS}
@@ -176,12 +177,14 @@ def main():
     nll_c = np.median(res["C  상자크기만"]["nll"])
     best_e = min(np.median(res["E1 컨포멀 배율"]["nll"]),
                  np.median(res["E2 조건부 컨포멀"]["nll"]))
-    best_cov = max(cov_e1, cov_e2)
+    # **95% 에 가까운 쪽**을 고른다. max 를 쓰면 과잉적용범위를 상으로 주게 된다
+    # (99% 가 96% 보다 낫다고 판정해 버린다). 목표는 크기가 아니라 일치다.
+    best_cov = min((cov_e1, "E1"), (cov_e2, "E2"), key=lambda t: abs(t[0] - 0.95))[0]
     print("  E 의 coverage 중앙값  E1 %.1f%%  E2 %.1f%%   (목표 95%%)"
           % (100 * cov_e1, 100 * cov_e2))
     print("  NLL 중앙값            E 최선 %.3f   C(상자크기) %.3f" % (best_e, nll_c))
     print()
-    ok_cov = 0.90 <= best_cov <= 0.97
+    ok_cov = 0.90 - 1e-9 <= best_cov <= 0.97 + 1e-9
     ok_nll = best_e < nll_c
     if ok_cov and ok_nll:
         print("  => **보정하면 쓸 수 있다.** coverage 를 맞추면서 크기모형도 이긴다.")
@@ -194,6 +197,35 @@ def main():
         print("     제약 1(시퀀스마다 눈금이 다르다)이 최종 결론이 된다.")
     print()
     print("  * coverage 와 NLL 을 같이 본다. 하나만 골라 보고하지 않는다 (함정 2).")
+
+    # ---- 탐색적 (사전 선언 아님. 판정에 쓰지 않는다) ----------------------
+    # coverage 는 95% 분위 **한 점**만 본다. 꼬리를 맞춰도 분포의 가운데가
+    # 어긋나 있을 수 있다. 보정 후 z^2 중앙값이 chi2(2) 중앙값과 맞는지 같이 본다.
+    print()
+    print("=" * 88)
+    print("[탐색적] 보정 뒤 분포의 가운데도 맞는가 -- z^2 중앙값 / chi2(2) 중앙값")
+    print("=" * 88)
+    print("  coverage 는 95%% 분위 한 점만 본다. 꼬리를 맞춰도 가운데가 틀릴 수 있다.")
+    print("  1.0 이면 완벽. 판정에는 쓰지 않는다 (사전 선언에 없다).")
+    print()
+    print("%-12s" % "held-out" + "".join("%13s" % n.split()[0] for n, _ in MODELS))
+    print("-" * 88)
+    mid = {n: [] for n, _ in MODELS}
+    for held in SEQS:
+        tr_parts = [data[s] for s in SEQS if s != held]
+        tr = {k: np.concatenate([p[k] for p in tr_parts]) for k in data[held]}
+        te = data[held]
+        cells = []
+        for name, fit in MODELS:
+            S = fit(tr)(te)
+            r = float(np.median(quad(S, te["ex"], te["ey"])) / QMED)
+            mid[name].append(r)
+            cells.append("%13.2f" % r)
+        print("%-12s" % held + "".join(cells))
+    print("-" * 88)
+    print("%-12s" % "중앙값" + "".join("%13.2f" % np.median(mid[n]) for n, _ in MODELS))
+    print()
+    print("  -> 1.0 에서 멀면 꼬리만 맞추고 가운데는 못 맞춘 것이다.")
 
 
 if __name__ == "__main__":
