@@ -164,14 +164,25 @@ def main():
     print("=" * 92)
     ta, tc = np.median(res["T-A"]["nll"]), np.median(res["T-C"]["nll"])
     ga, gc = np.median(res["G-A"]["nll"]), np.median(res["G-C"]["nll"])
-    win = sum(x < y for x, y in zip(res["T-A"]["nll"], res["T-C"]["nll"]))
-    print("  T-A %.3f   vs   T-C %.3f     (T-A 가 이긴 fold %d/7)" % (ta, tc, win))
+    # **짝지어 본다.** fold 마다 난이도가 달라서 두 목록의 중앙값을 따로 내
+    # 비교하면 짝이 깨지고 부호가 뒤집힐 수 있다. 실제로 DFL 소스에서
+    # 중앙값끼리는 T-C 승인데 fold 별로는 T-A 가 6/7 이었다. (2026-08-17)
+    d = np.array(res["T-A"]["nll"]) - np.array(res["T-C"]["nll"])
+    win = int((d < 0).sum())
+    print("  T-A %.3f   vs   T-C %.3f     <- 짝 안 지은 중앙값 (참고용)" % (ta, tc))
+    print("  **짝지은 차이 T-A − T-C**: 중앙 %+.3f  평균 %+.3f  A 승 %d/7"
+          % (np.median(d), d.mean(), win))
+    print("     fold 별: %s" % " ".join("%+.3f" % v for v in d))
     print("  G-A %.3f   vs   G-C %.3f     <- 분포족 바꾸기 전" % (ga, gc))
     print()
     print("  분포족 효과: A 는 %+.3f, C 는 %+.3f (t - 가우시안, 음수면 t 가 낫다)"
           % (ta - ga, tc - gc))
+    # n=7 짝 표본의 부호검정. 6/7 이면 한쪽꼬리 p=0.0625 로 0.05 를 못 넘는다.
+    from math import comb
+    p_one = sum(comb(7, i) for i in range(win, 8)) / 2 ** 7
+    print("  부호검정(한쪽꼬리) p = %.4f   <- n=7 이라 6/7 로도 0.05 를 못 넘는다" % p_one)
     print()
-    if ta < tc:
+    if np.median(d) < 0:
         print("  => **분포족이 문제였다.** 꼬리를 담으니 Sigma_d 가 크기모형을 이긴다.")
     else:
         print("  => **꼬리가 원인이 아니다.** t 를 줘도 Sigma_d 가 크기모형에 진다.")
