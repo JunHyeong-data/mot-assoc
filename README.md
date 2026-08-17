@@ -189,7 +189,19 @@ python theory/separability_residual.py
 python theory/threshold_and_fusion.py
 ```
 
-GPU 불필요. numpy와 scipy만 쓴다.
+`theory/` 는 **numpy와 scipy만** 쓰고 GPU 도 필요 없다.
+
+`experiments/` 는 검출기를 돌리므로 `ultralytics`·`torch`·`opencv-python` 이 더 필요하다
+(`requirements.txt` 에 있다). GPU 는 있으면 빠르고 없어도 된다 — 실험 1 의 7시퀀스
+21개 실행이 CPU 로 약 40분이다.
+
+```bash
+python experiments/exp01_nms_variance/run_all.py    # 세 갈래 전부 다시 낸다
+python experiments/exp01_nms_variance/aggregate.py -fork
+```
+
+실험 2·3 은 콜랩에서 UTrack 클론 안의 의존성으로 돌린다
+(`experiments/exp02_utrack_replication/colab_setup.md`).
 
 `theory/` 스크립트는 Windows 기본 콘솔(cp949)에서 그대로 돌아가야 한다.
 print 문에 em-dash(—)나 화살표(→)를 쓰면 `UnicodeEncodeError` 로 죽는다. ASCII 로 쓸 것.
