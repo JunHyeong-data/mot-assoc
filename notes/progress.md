@@ -366,7 +366,26 @@ ls data/exp05/*.npz | wc -l    # 7 이면 완료
      한다. 안 되면 배관이 틀린 것이니 **판정하지 말 것**
 3. **판정**: 주 종말점 `W-DFL − W-size`, 판정폭 0.3 HOTA
 
-상세는 `experiments/exp05_wasserstein/README.md` (사전 선언).
+상세는 `experiments/exp05_wasserstein/README.md` (사전 선언 + **수학 감사**).
+
+**2·3단계는 이미 만들어져 있다** (2026-08-17 저녁):
+- `wcost.py` — 비용함수. 대각에서 Bures = sum(sqrt(st)-sqrt(sd))^2 로 떨어진다
+- `selftest.py` — **8/8 PASS**. 공분산 역설 없음을 구현 수준에서 확인
+- `replay.py` — 캐시된 검출을 BYTETracker 에 재생. `get_dists` 만 갈아끼운다.
+  **관문 [0b](트랙 간 CV(Σt))를 여기서 잰다**
+
+**캐싱이 끝나면 바로:**
+```bash
+python experiments/exp05_wasserstein/replay.py iou w_dfl w_size
+```
+**[0b] 출력을 먼저 볼 것.** CV < 0.05 면 검정력이 없으니 판정하지 않는다.
+그다음 HOTA 배선(UTrack 벤더링 TrackEval)이 남았다 — 아직 미착수.
+
+**수학 감사가 바꾼 것 둘** (결과 보기 전에 반영함):
+- 관문 [0] 정정: exp02 의 64.494 는 UTrack `botsort` 값이라 ultralytics
+  BYTETracker 로 재현 불가. 절대값 대신 **내적 타당성**으로 바꿨다
+- 관문 [0b] 신설: Bures 의 비분리항은 Σt 가 트랙마다 달라야 산다.
+  CV=0 이면 채널이 완전히 죽는다(합성 확인)
 
 ### 열려 있는 것 (실험 5 와 별개)
 
