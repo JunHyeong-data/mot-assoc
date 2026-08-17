@@ -119,8 +119,10 @@ class WTracker(BYTETracker):
                 d = matching.fuse_score(d, detections)
             return d
 
-        t_box = np.asarray([t.tlbr for t in tracks], dtype=float).reshape(-1, 4)
-        d_box = np.asarray([d.tlbr for d in detections], dtype=float).reshape(-1, 4)
+        # ultralytics STrack 의 상자 속성은 `.xyxy` 다 (`.tlbr` 은 UTrack 쪽 이름).
+        # 트랙 쪽 .xyxy 는 칼만 예측이 반영된 현재 추정값이라 연관에 쓰는 것이 맞다.
+        t_box = np.asarray([t.xyxy for t in tracks], dtype=float).reshape(-1, 4)
+        d_box = np.asarray([d.xyxy for d in detections], dtype=float).reshape(-1, 4)
         t_var = self._track_var(tracks)
 
         # 관문 [0b]: 트랙 간 Sigma_t 변동
@@ -148,7 +150,10 @@ class WTracker(BYTETracker):
 
 
 def load(seq, arm):
-    d = np.load(CACHE / ("%s.npz" % seq))
+    f0 = CACHE / ("%s.npz" % seq)
+    if not f0.exists():          # 캐싱이 아직 안 끝난 시퀀스는 건너뛴다
+        return None
+    d = np.load(f0)
     sxx, syy = d["sxx"], d["syy"]
     if arm == "w_nms":                          # NMS sigma 는 별도 파일에서
         f = CACHE / ("%s-nms.npz" % seq)
