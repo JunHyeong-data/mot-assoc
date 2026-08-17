@@ -83,7 +83,66 @@ def calibrate_C(arm):
     return solve_C(np.concatenate(tmp.w2_log), 0.5)
 
 
+def measure(arm, C):
+    """캐시된 모든 시퀀스에서 1단계 채택률을 잰다."""
+    nm = ncap = 0
+    for seq in SEQS:
+        c = load(seq, arm)
+        if c is None:
+            continue
+        tr = RateTracker(SimpleNamespace(**BASE), arm, C, frame_rate=30)
+        for f in range(1, c["n_frames"] + 1):
+            m = c["frame"] == f
+            tr.update(Det(c["xyxy"][m], c["conf"][m], np.zeros(int(m.sum())),
+                          c["sxx"][m], c["syy"][m]))
+        nm += tr.n_match
+        ncap += tr.n_cap
+    return nm, ncap, 100.0 * nm / max(ncap, 1)
+
+
+def solve_C_by_rate(arm, target_rate, C_hi, iters=12):
+    """채택률을 target 에 맞추는 C 를 이분법으로 찾는다 (**강건성 확인용**).
+
+    사전 선언한 보정 절차(비용 중앙값)를 **대체하지 않는다.** 중앙값 보정으로
+    난 채택률이 기준선과 몇 %p 어긋나므로, "임계값 효과가 아니다" 라는 주장을
+    한 번 더 받치기 위한 보조 갈래다.
+
+    C 가 커지면 cost = 1-exp(-r/C) 가 작아져 채택률이 오른다 -> 단조 증가.
+    다만 매칭이 바뀌면 이후 트랙 구성도 바뀌므로 완전한 단조는 아니다.
+    계단 함수라 이분법이 정확히 수렴하지 않을 수 있다 -- 근사면 충분하다.
+    """
+    lo, hi = C_hi * 1e-3, C_hi
+    best = (None, None)
+    for _ in range(iters):
+        mid = np.sqrt(lo * hi)                      # 규모가 커서 로그 이분법
+        _, _, r = measure(arm, mid)
+        if best[0] is None or abs(r - target_rate) < abs(best[1] - target_rate):
+            best = (mid, r)
+        if r > target_rate:
+            hi = mid
+        else:
+            lo = mid
+    return best
+
+
 def main():
+    if "--solve" in sys.argv:
+        arms = [a for a in sys.argv[1:] if a in ARMS] or ["w_dfl", "w_size"]
+        print("=" * 74)
+        print("채택률을 기준선(iou)에 정확히 맞추는 C 를 찾는다 -- 강건성 확인용")
+        print("=" * 74)
+        _, _, tgt = measure("iou", 1.0)
+        print("목표 채택률 (iou) = %.2f%%" % tgt)
+        for arm in arms:
+            C0 = calibrate_C(arm)
+            if C0 is None:
+                print("%-10s (캐시 없음)" % arm)
+                continue
+            C, r = solve_C_by_rate(arm, tgt, C0 * 4.0)
+            print("%-10s 중앙값보정 C = %.1f  ->  채택률맞춤 C = %.2f (채택률 %.2f%%)"
+                  % (arm, C0, C, r))
+        return
+
     arms = [a for a in sys.argv[1:] if a in ARMS] or ["iou", "w_dfl", "w_size"]
     print("=" * 74)
     print("실험 5 -- 사전 선언 함정 3 검증: 1단계 채택률")
@@ -100,19 +159,7 @@ def main():
         if C is None:
             print("%-14s (캐시 없음)" % arm)
             continue
-        nm = ncap = 0
-        for seq in SEQS:
-            c = load(seq, arm)
-            if c is None:
-                continue
-            tr = RateTracker(SimpleNamespace(**BASE), arm, C, frame_rate=30)
-            for f in range(1, c["n_frames"] + 1):
-                m = c["frame"] == f
-                tr.update(Det(c["xyxy"][m], c["conf"][m], np.zeros(int(m.sum())),
-                              c["sxx"][m], c["syy"][m]))
-            nm += tr.n_match
-            ncap += tr.n_cap
-        rate = 100.0 * nm / max(ncap, 1)
+        nm, ncap, rate = measure(arm, C)
         print(hdr % (arm, "%.1f" % C, "%d" % nm, "%d" % ncap, "%.1f%%" % rate))
 
 

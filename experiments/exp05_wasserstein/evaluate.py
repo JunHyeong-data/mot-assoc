@@ -191,13 +191,38 @@ def main():
             "크기 소스가 낫다" if a - b < -0.3 else "**차이 없음**")
         print("  => %s" % v)
         print()
+
+        # 시퀀스별. combine_sequences 는 **검출 수 가중**이라 큰 시퀀스가 지배한다.
+        # 가중 없는 평균과 부호 검정을 함께 본다 -- 실험 1g 에서 쓴 것과 같은 자.
         print("  시퀀스별 HOTA:")
+        head = "    %-18s %7s %7s %7s   %s" % ("시퀀스", "A(IoU)", "W-DFL", "W-size", "[1] 차이")
+        print(head)
+        diffs = []
         for seq in SEQS:
-            if seq in results["w_dfl"][1] and seq in results["w_size"][1]:
-                x = 100 * np.mean(results["w_dfl"][1][seq]["HOTA"])
-                y = 100 * np.mean(results["w_size"][1][seq]["HOTA"])
-                print("    %-18s W-DFL %6.2f   W-size %6.2f   차이 %+.2f"
-                      % (seq, x, y, x - y))
+            if seq not in results["w_dfl"][1] or seq not in results["w_size"][1]:
+                continue
+            x = 100 * np.mean(results["w_dfl"][1][seq]["HOTA"])
+            y = 100 * np.mean(results["w_size"][1][seq]["HOTA"])
+            z = (100 * np.mean(results["iou"][1][seq]["HOTA"])
+                 if "iou" in results and seq in results["iou"][1] else float("nan"))
+            diffs.append(x - y)
+            print("    %-18s %7.2f %7.2f %7.2f   %+.2f" % (seq, z, x, y, x - y))
+
+        if diffs:
+            d = np.array(diffs)
+            n = len(d)
+            win = int((d > 0).sum())
+            # 양측 부호검정 (실험 1g 와 같은 절차)
+            from math import comb
+            k = max(win, n - win)
+            p = 2.0 * sum(comb(n, i) for i in range(k, n + 1)) / 2.0 ** n
+            print()
+            print("    가중 평균 (TrackEval 표준, 검출 수 가중) : %+.3f" % (a - b))
+            print("    가중 없는 시퀀스 평균                    : %+.3f" % d.mean())
+            print("    DFL 이 이긴 시퀀스                       : %d/%d  (부호검정 양측 p = %.3f)"
+                  % (win, n, min(p, 1.0)))
+            if (a - b) * d.mean() < 0:
+                print("    ** 가중 여부에 따라 부호가 뒤집힌다. 큰 시퀀스가 지배한다는 뜻이다. **")
 
 
 if __name__ == "__main__":

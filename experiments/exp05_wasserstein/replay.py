@@ -32,6 +32,12 @@
 사용법:
     python experiments/exp05_wasserstein/replay.py iou
     python experiments/exp05_wasserstein/replay.py w_dfl w_size
+
+**강건성 확인용 덮어쓰기** (기본 동작은 안 바뀐다):
+    python experiments/exp05_wasserstein/replay.py w_dfl --C 210.4 --out w_dfl_rate
+
+`--C` 를 주면 중앙값 보정을 건너뛰고 그 값을 쓴다. `accept_rate.py --solve` 가
+채택률을 기준선에 정확히 맞추는 C 를 준다. `--out` 은 결과 폴더 이름이다.
 """
 import sys
 from pathlib import Path
@@ -185,8 +191,19 @@ def run_seq(seq, arm, C):
     return lines, tr
 
 
+def _flag(name, cast):
+    """--name VALUE 를 읽는다. 없으면 None."""
+    if name in sys.argv:
+        i = sys.argv.index(name)
+        if i + 1 < len(sys.argv):
+            return cast(sys.argv[i + 1])
+    return None
+
+
 def main():
     arms = [a for a in sys.argv[1:] if a in ARMS] or list(ARMS)
+    C_override = _flag("--C", float)
+    out_override = _flag("--out", str)
     OUTDIR.mkdir(parents=True, exist_ok=True)
 
     # C 보정 (함정 3): 기준선 비용의 중앙값에 맞춘다. 먼저 iou 로 목표를 잰다.
@@ -207,7 +224,10 @@ def main():
         print("=" * 66)
         # w2 표본을 먼저 모아 C 를 푼다 (한 시퀀스로 충분하다)
         C = 1.0
-        if arm != "iou":
+        if arm != "iou" and C_override is not None:
+            C = C_override
+            print("  C = %.3f  (**덮어쓰기** -- 채택률 맞춤. 중앙값 보정 건너뜀)" % C)
+        elif arm != "iou":
             tmp = WTracker(SimpleNamespace(**BASE), arm, 1.0)
             c1 = load(SEQS[0], arm)
             if c1 is None:
@@ -225,7 +245,7 @@ def main():
             lines, tr = run_seq(seq, arm, C)
             if lines is None:
                 print("  %-18s 캐시 없음" % seq); continue
-            out = OUTDIR / arm
+            out = OUTDIR / (out_override or arm)
             out.mkdir(parents=True, exist_ok=True)
             (out / ("%s.txt" % seq)).write_text("\n".join(lines) + "\n")
             if tr.cv_log:
