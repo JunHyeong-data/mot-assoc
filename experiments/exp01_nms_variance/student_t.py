@@ -30,13 +30,15 @@ if hasattr(sys.stdout, "reconfigure"):
 
 SEQS = ["MOT17-02", "MOT17-04", "MOT17-05", "MOT17-09",
         "MOT17-10", "MOT17-11", "MOT17-13"]
+# 소스 갈래. "" = NMS 후보 산포(실험 1), "-dfl" = DFL 분포 분산(실험 1g).
+TAG = sys.argv[1] if len(sys.argv) > 1 else ""
 DIM = 2
 # nu 격자. inf 는 가우시안이다 (같은 코드로 두 분포족을 다룬다).
 NUS = [1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 20.0, 30.0, 50.0, 100.0, np.inf]
 
 
 def load(seq):
-    d = np.load(Path("data/exp01") / ("%s-FRCNN.npz" % seq))
+    d = np.load(Path("data/exp01") / ("%s-FRCNN%s.npz" % (seq, TAG)))
     sxx, sxy, syy = d["sxx"], d["sxy"], d["syy"]
     det2 = sxx * syy - sxy ** 2
     ok = ~np.isnan(sxx) & (det2 > 1e-9) & (sxx > 1e-9) & (syy > 1e-9)
@@ -103,7 +105,7 @@ def S_B_from(tr):
 def main():
     data = {s: load(s) for s in SEQS}
     print("=" * 92)
-    print("실험 1f -- Student-t. leave-one-sequence-out (yolov8m, 200~299프레임)")
+    print("실험 1f/1g -- Student-t. leave-one-sequence-out  소스 TAG=%r" % (TAG or "NMS"))
     print("=" * 92)
     print("**t 를 모든 모형에 똑같이 준다.** 그래야 남는 차이가 Sigma_d 대 h^2 뿐이다.")
     print("NLL 에 상수항을 전부 넣었다 -> 실험 1e 수치와 log(2pi)=1.838 만큼 다르다.")

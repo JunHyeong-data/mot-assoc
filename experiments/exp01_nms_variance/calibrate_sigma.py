@@ -25,7 +25,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 SEQS = ["MOT17-02", "MOT17-04", "MOT17-05", "MOT17-09",
         "MOT17-10", "MOT17-11", "MOT17-13"]
-TAG = ""                       # 200~299프레임 갈래. 표본이 제일 크다
+TAG = sys.argv[1] if len(sys.argv) > 1 else ""   # "" = NMS, "-dfl" = DFL
 Q95 = chi2.ppf(0.95, 2)
 QMED = chi2.ppf(0.5, 2)
 NBIN = 4                       # E2 의 구간 수. **미리 못박는다** (사전 선언 함정 3)
