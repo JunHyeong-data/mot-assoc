@@ -37,8 +37,9 @@ if hasattr(sys.stdout, "reconfigure"):
 
 OUT = Path("figures")
 
-CHANNELS = ["Cost: additive", "Cost: multiplicative", "Kalman R",
-            "Gating / box expansion", "Association ordering", "Matching threshold"]
+CHANNELS = ["Cost: additive", "Cost: multiplicative", "Distance function",
+            "Kalman R", "Gating / box expansion", "Association ordering",
+            "Matching threshold"]
 SOURCES = ["Box size\n(geometry)", "Detection\nconfidence",
            "Localization\nquality", "Detector $\\sigma$\n(NMS / DFL)", "Track-side\nhistory"]
 
@@ -49,25 +50,29 @@ CELLS = {
     (1, 1): ("ByteTrack impl\n(no rationale)", "0", False),
     (1, 2): ("LG-Track\neq.1, 3", "+", False),
     (1, 3): ("ours\n$-1.01$", "-", True),
-    (2, 0): ("UCMCTrack\n$R=(\\sigma_m w,\\sigma_m h)$", "+", False),
-    (2, 1): ("NSA Kalman\n$\\tilde R=(1-c)R$", "+", False),
-    (2, 3): ("UTrack $-0.62$\nUncTrack $-0.1$", "-", False),
-    (3, 0): ("ours (control)\nbeats $\\sigma$ by 3.81", "0", True),
+    # **거리 함수 행 (2026-08-18 신설).** 2.3 절이 경로로 세는데 지도에 없었다.
+    # NWD 는 검출용이라 MOT 연관 결과가 아니다 -- 중립으로 칠한다.
+    (2, 0): ("NWD $\\Sigma{=}$diag$(w^2/4,h^2/4)$\n(detection); ours $-4.98$", "0", False),
+    (2, 3): ("ours (Wasserstein)\n$-8.90$; loses to size by 3.92", "-", True),
+    (3, 0): ("UCMCTrack\n$R=(\\sigma_m w,\\sigma_m h)$", "+", False),
+    (3, 1): ("NSA Kalman\n$\\tilde R=(1-c)R$", "+", False),
+    (3, 3): ("UTrack $-0.62$\nUncTrack $-0.1$", "-", False),
+    (4, 0): ("ours (control)\nbeats $\\sigma$ by 3.81", "0", True),
     # **한 칸에 두 이야기가 있다.** UncTrack 의 +2.2 는 상자확장 전체의 이득이고,
     # 우리 -4.33 은 "확장량을 맞췄을 때 sigma 로 정한 쪽이 크기로 정한 쪽보다"
     # 얼마나 나쁜가다. **다른 양이므로 같은 색으로 칠하면 오해를 부른다.**
-    (3, 3): ("UncTrack $+2.2$ (expansion)" + chr(10) + "ours: $" + chr(92) + "sigma$-driven $-4.33$", "m", False),
-    (4, 2): ("LG-Track\n4-level cascade", "+", False),
-    (4, 3): ("UncTrack\nentropy $+0.2$", "+", False),
-    (4, 4): ("DeepSORT (age)\nBae (routing)", "+", False),
-    (5, 3): ("ours\n$-0.21$ (oracle $+0.89$)", "-", True),
+    (4, 3): ("UncTrack $+2.2$ (expansion)" + chr(10) + "ours: $" + chr(92) + "sigma$-driven $-4.33$", "m", False),
+    (5, 2): ("LG-Track\n4-level cascade", "+", False),
+    (5, 3): ("UncTrack\nentropy $+0.2$", "+", False),
+    (5, 4): ("DeepSORT (age)\nBae (routing)", "+", False),
+    (6, 3): ("ours\n$-0.21$ (oracle $+0.89$)", "-", True),
 }
 FILL = {"+": "#d6ead6", "-": "#f6d9d6", "0": "#e8e8e8", "m": "#fdf0d5", "?": "#ffffff"}
 EDGE = {"+": "#4a7a4a", "-": "#a04a44", "0": "#888888", "m": "#b8860b", "?": "#cccccc"}
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(11.2, 5.6))
+    fig, ax = plt.subplots(figsize=(11.2, 6.4))
     nr, nc = len(CHANNELS), len(SOURCES)
 
     for i in range(nr):
@@ -79,7 +84,7 @@ def main():
                                    edgecolor=edge, lw=1.4 if e else 0.8, zorder=2))
             if e:
                 ax.text(j + 0.5, nr - 1 - i + 0.5, e[0], ha="center", va="center",
-                        fontsize=7.6, zorder=3,
+                        fontsize=7.0, zorder=3,
                         fontstyle="italic" if e[2] else "normal",
                         color="#333333" if e[2] else "#111111")
 
@@ -117,6 +122,8 @@ def main():
     print("칸이 %d개 찼다 (%d x %d 중). **빈 칸이 정보다** --" % (len(CELLS), nr, nc))
     print("  '상자 크기 × 순서', '검출 신뢰도 × 게이팅' 같은 조합은 아무도 안 했다")
     print("  그리고 **가산 열은 우리 것 하나뿐이다** -- 아무도 덧셈으로 안 넣는다")
+    print()
+    print("거리 함수 행을 2026-08-18 에 넣었다. 2.3 절이 경로로 세는데 빠져 있었다.")
     return 0
 
 
