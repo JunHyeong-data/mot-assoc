@@ -32,6 +32,7 @@ from tracker.eval.collections.hota import HOTA                 # noqa: E402
 from tracker.eval.collections.clear import CLEAR               # noqa: E402
 
 OUT = Path("data/exp12/tracks")
+DIAG = {"gid_hit": 0, "gid_tot": 0, "rows": {}}
 IOU_MATCH = 0.5
 BIG = 1e6
 PEDESTRIAN = 1
@@ -115,6 +116,8 @@ def replay(oracle, tag):
     for seq in SEQS:
         c = load(seq, "iou")
         gid = det_gt_ids(c, gt_by_frame(seq)) if oracle else np.full(len(c["conf"]), -1)
+        if oracle:
+            DIAG["gid_hit"] += int((gid >= 0).sum()); DIAG["gid_tot"] += len(gid)
         cls = OracleTracker if oracle else WTracker
         tr = cls(SimpleNamespace(**BASE), "iou", 1.0, frame_rate=30)
         lines = []
@@ -127,6 +130,7 @@ def replay(oracle, tag):
                 lines.append("%d,%d,%.2f,%.2f,%.2f,%.2f,%.4f,-1,-1,-1"
                              % (f, int(row[4]), x1, y1, x2 - x1, y2 - y1, float(row[5])))
         (out / ("%s.txt" % seq)).write_text("\n".join(lines) + "\n")
+        DIAG["rows"].setdefault(seq, {})[tag] = len(lines)
 
 
 def score(tag):
@@ -176,10 +180,16 @@ def main():
     ok &= g0b
     print("  [0b] AssA 가 오른다                %+.3f  %s"
           % (o["AssA"] - b["AssA"], "OK" if g0b else "** 실패 **"))
-    g0c = abs(o["DetA"] - b["DetA"]) < 1.0
+    # [0c] 는 버렸다 -- PREREG-v2.md 참고. "캐시가 같으면 DetA 도 같다" 가 거짓이었다.
+    g0c = o["IDSW"] < b["IDSW"]
     ok &= g0c
-    print("  [0c] 검출은 사실상 그대로          DetA %+.3f  %s"
-          % (o["DetA"] - b["DetA"], "OK" if g0c else "** 검출이 움직였다 **"))
+    print("  [0c'] 신탁의 IDSW 가 더 적다        %.0f vs %.0f  %s"
+          % (o["IDSW"], b["IDSW"], "OK" if g0c else "** 실패: 신탁이 신탁이 아니다 **"))
+    cov = 100.0 * DIAG["gid_hit"] / max(DIAG["gid_tot"], 1)
+    g0d = cov >= 50.0
+    ok &= g0d
+    print("  [0d]  GT id 가 붙은 검출 비율       %.1f%%  %s"
+          % (cov, "OK (>=50)" if g0d else "** 신탁이 약하다 **"))
     if not ok:
         print()
         print("  ** 관문 실패. 판정하지 않는다 **")
@@ -199,6 +209,15 @@ def main():
     print("  [1] **여지 = %+.3f HOTA**   (가중 없는 시퀀스 평균 %+.3f)" % (room, unw))
     print("  [2] AssA %+.3f,  IDSW %+.0f" % (o["AssA"] - b["AssA"], o["IDSW"] - b["IDSW"]))
     print()
+    print("  [진단] 출력 행 수 -- [0c] 를 버린 이유. **연관이 출력을 바꾼다**")
+    tb = sum(v["base"] for v in DIAG["rows"].values())
+    to = sum(v["oracle"] for v in DIAG["rows"].values())
+    print("      기준선 %d 행 -> 신탁 %d 행   %+d (%.1f%%)"
+          % (tb, to, to - tb, 100.0 * (to - tb) / max(tb, 1)))
+    print("      신탁은 GT id 가 다른 검출과의 매칭을 거부한다. 빠진 것 상당수가")
+    print("      거짓양성이라 DetA 가 오른다 -- 캐시가 같아도 정상이다")
+
+    print()
     print("  [3] 시퀀스별 여지")
     for s in SEQS:
         if s in b["per"]:
@@ -216,7 +235,7 @@ def main():
 
     print()
     print("=" * 92)
-    print("판정 -- 사전 선언한 읽는 법")
+    print("판정 -- **원본 PREREG.md(c633eee) 의 읽는 법 표를 그대로 적용한다**")
     print("=" * 92)
     if room < 3.0:
         print("  여지 %.2f < 3 => **이 벤치마크는 연관 포화다.**" % room)
