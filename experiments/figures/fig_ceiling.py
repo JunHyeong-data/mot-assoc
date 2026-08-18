@@ -43,11 +43,16 @@ TRIED = [
     ("Threshold oracle\n(exp06 upper bound)", +0.892, "oracle"),
     ("Camera motion comp.\n(exp14, not $\\sigma$)", +0.430, "other"),
     ("Matching threshold\n(exp06 LOSO)", -0.207, "ours"),
-    ("Kalman $R$\n(exp02)", -0.620, "ours"),
-    ("Gating\n(exp03)", -4.330, "ours"),
-    ("Distance function\n(exp05)", -4.980, "ours"),
+    ("Kalman $R$\n(exp02, NMS $\\sigma$)", -0.620, "ours"),
+    ("Gating\n(exp03, NMS $\\sigma$)", -4.330, "ours"),
+    # **정정 (심사 2차)**: 예전에 거리 함수를 -4.98 로 그렸는데 그건 `wn_size`,
+    # 즉 **박스 크기 소스**다. 검출기 sigma 갈래는 `wn_dfl` 이고
+    # 52.10 - 61.00 = **-8.90** 이다. 둘을 갈라 그린다.
+    ("Distance function\n(exp05, box-size $\\sigma_C$)", -4.980, "size"),
+    ("Distance function\n(exp05, DFL $\\sigma$)", -8.900, "ours"),
 ]
-CLR = {"ceiling": "#1f4e79", "oracle": "#7f9fbf", "other": "#9a9a9a", "ours": "#c0504d"}
+CLR = {"ceiling": "#1f4e79", "oracle": "#7f9fbf", "other": "#9a9a9a",
+       "ours": "#c0504d", "size": "#e8b4b1"}   # size = 크기 소스. 우리 sigma 와 구별
 
 
 def main():
@@ -69,7 +74,7 @@ def main():
         return 1
     print("  일치. 왼쪽 판의 자료가 exp12 것과 같다.")
 
-    fig, ax = plt.subplots(1, 2, figsize=(11.0, 4.3),
+    fig, ax = plt.subplots(1, 2, figsize=(11.6, 4.8),
                            gridspec_kw={"width_ratios": [1.0, 1.15]})
 
     # ---- 왼쪽: 시퀀스별 기준선 + 여지 ----
@@ -108,9 +113,9 @@ def main():
                fontweight="bold" if kind[i] == "ceiling" else "normal")
     b.set_yticks(yy)
     b.set_yticklabels(lab, fontsize=8.2)
-    b.set_xlim(-6.6, 4.6)
+    b.set_xlim(-10.8, 4.6)
     b.set_xlabel("$\\Delta$HOTA vs baseline (combined)")
-    b.set_title("(b) What we reached\nthe ceiling is positive; every $\\sigma$ channel is not",
+    b.set_title("(b) What we reached\nthe ceiling is positive; every detector-$\\sigma$ channel is not",
                 fontsize=11)
 
     for a_ in ax:
@@ -131,7 +136,8 @@ def main():
     print()
     print("여지 범위 %.2f (%s) ~ %.2f (%s)"
           % (room[0], short[0], room[-1], short[-1]))
-    print("0 위에 있는 것은 오라클 둘과 카메라 보상뿐이다. **sigma 경로 넷은 전부 아래.**")
+    print("0 위에 있는 것은 오라클 둘과 카메라 보상뿐이다. **검출기 sigma 경로 넷은 전부 아래.**")
+    print("거리 함수는 소스를 갈라 둘로 그렸다 -- 크기 -4.98 대 DFL -8.90.")
     return 0
 
 
