@@ -38,7 +38,10 @@ ok &= not (c - bi)
 lab = set(re.findall(BS * 2 + r"label\{([^}]*)\}", t))
 ref = set(re.findall(BS * 2 + r"ref\{([^}]*)\}", t))
 print("ref 했으나 label 없음   :", sorted(ref - lab) or "없음")
-print("label 있으나 미참조     :", sorted(lab - ref) or "없음")
+# 절 라벨(sec:*)은 참조 안 될 수 있다 -- 잡음이라 뺀다.
+# 표/그림/식 라벨이 미참조면 그건 진짜 문제다.
+orphan = sorted(x for x in (lab - ref) if not x.startswith("sec:"))
+print("label 있으나 미참조     :", orphan or "없음", "(sec:* 제외)")
 ok &= not (ref - lab)
 
 # 표 열 개수 -- LaTeX 에서 제일 흔한 컴파일 실패다
