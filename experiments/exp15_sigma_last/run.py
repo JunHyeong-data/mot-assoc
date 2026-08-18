@@ -51,6 +51,8 @@ class ProbeTracker(WTracker):
     얼마나 섞여 있었는지 보고한다.
     """
 
+    seq_tag = "?"
+
     def init_track(self, results, img=None):
         tracks = super().init_track(results, img)
         for t in tracks:
@@ -83,7 +85,7 @@ class ProbeTracker(WTracker):
                 lab = "틀림_고칠수있음"        # 올바른 검출이 그 프레임에 있었다
             else:
                 lab = "틀림_못고침"            # 미검출이라 연관으로는 못 고친다
-            REC.append((lab, sig, h))
+            REC.append((lab, sig, h, self.seq_tag))
         return d
 
 
@@ -137,6 +139,7 @@ def main():
                 % (SRC, seq))
         gid = det_gt_ids(c, gt_by_frame(seq))
         tr = ProbeTracker(SimpleNamespace(**BASE), "iou", 1.0, frame_rate=30)
+        tr.seq_tag = seq
         for f in range(1, c["n_frames"] + 1):
             m = c["frame"] == f
             tr.update(GDet(c["xyxy"][m], c["conf"][m], np.zeros(int(m.sum())),
@@ -145,6 +148,7 @@ def main():
     lab = np.array([r[0] for r in REC])
     sig = np.array([r[1] for r in REC], float)
     hgt = np.array([r[2] for r in REC], float)
+    sqs = np.array([r[3] for r in REC])
 
     print("=" * 92)
     print("[진단] get_dists 호출의 단계 구성 -- 감사에서 나온 정정")
@@ -205,6 +209,25 @@ def main():
         print("     어느 통로에 넣어도 안 된다. **σ 질문이 완전히 닫힌다.**")
         print("     통로 넷의 음성이 '통로가 나빴다' 가 아니라")
         print("     **'애초에 옮길 정보가 없었다'** 로 설명된다")
+    print()
+    print("=" * 92)
+    print("시퀀스별 AUC -- 그림 F 용. **전부 0.5 근처면 정보가 없다는 뜻이다**")
+    print("=" * 92)
+    per = {}
+    for s in sorted(set(sqs)):
+        m = sqs == s
+        o, b = ok & m, bad & m
+        v = auc(sig[b], sig[o]) if o.sum() and b.sum() else float("nan")
+        per[s] = dict(auc=float(v), n_ok=int(o.sum()), n_bad=int(b.sum()))
+        print("  %-18s AUC %.4f   (옳음 %5d / 틀림 %4d)"
+              % (s.replace("-FRCNN", ""), v, o.sum(), b.sum()))
+    import json
+    out = Path("data/exp15"); out.mkdir(parents=True, exist_ok=True)
+    fn = out / ("perseq-%s.json" % ("nms" if SRC == "w_nms" else "dfl"))
+    fn.write_text(json.dumps(dict(source=SRC, overall=float(a_sig),
+                                  overall_c=float(a_c), per=per), indent=1))
+    print("  -> %s" % fn)
+
     if a_c > a_sig:
         print()
         print("  [3] 상자 크기가 σ 를 이긴다 (%.4f > %.4f)." % (a_c, a_sig))
