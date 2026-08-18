@@ -147,7 +147,7 @@
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_source_channel.pdf}
+\includegraphics{figures/fig_source_channel.pdf}
 \caption{신호의 산출 방식(가로축) $\times$ 주입 경로(세로축) 지도. 각 칸은 해당 조합을 사용한 방법과 보고된 결과를 나타낸다. 기울임체는 본 연구의 결과이다. 모든 항목은 원문을 직접 확인하여 작성하였다. \textbf{열을 따라 읽으면 패턴이 보인다} --- 박스 크기 열은 대부분 이득이 보고된 반면, \textbf{검출기 $\sigma$ 열은 연관 순서 한 칸을 빼면 전부 손실}이다. 빈 칸도 정보이다 --- 예컨대 박스 크기를 연관 순서에 쓴 사례는 없다.}
 \label{fig:map}
 \end{figure}
@@ -271,18 +271,18 @@ $N \le M$인 할당 문제에서, 검출에만 의존하는 항을 비용에 더
 
 \section{비교 조건}
 
-$\sigma$를 네 가지 경로에 주입하고 각각을 기준선과 비교한다.
+$\sigma$를 네 가지 경로에 주입하고 각각을 기준선과 비교한다. \textbf{경로마다 사용 가능한 $\sigma$ 산출 방식이 달라 아래와 같이 나뉜다}(표~\ref{tab:channels}).
 
 \begin{itemize}[leftmargin=2em]
-\item \textbf{칼만 필터 측정잡음}: 트랙 상태 갱신 시 $R$을 검출별 $\sigma$로 대체. UTrack의 방식을 재현.
-\item \textbf{거리 함수}: IoU를 2-Wasserstein 거리로 대체. 트랙과 검출을 각각 가우시안으로 보고 $W^2 = \|\epsilon\|^2 + \mathrm{tr}(\Sigma_t + \Sigma_d - 2(\Sigma_t^{1/2}\Sigma_d\Sigma_t^{1/2})^{1/2})$를 계산.
+\item \textbf{칼만 필터 측정잡음}(NMS 후보 분산): 트랙 상태 갱신 시 $R$을 검출별 $\sigma$로 대체. UTrack의 방식을 재현하므로 그들이 쓴 산출 방식을 따랐다.
+\item \textbf{거리 함수}(DFL 분포 분산): IoU를 2-Wasserstein 거리로 대체. 트랙과 검출을 각각 가우시안으로 보고 $W^2 = \|\epsilon\|^2 + \mathrm{tr}(\Sigma_t + \Sigma_d - 2(\Sigma_t^{1/2}\Sigma_d\Sigma_t^{1/2})^{1/2})$를 계산한다. 이 형태는 위치 항이 박스 크기로 정규화되지 않아 큰 객체가 불리해지므로, 쌍마다 $s_x = \sqrt{w_t w_d}$, $s_y = \sqrt{h_t h_d}$로 좌표를 나눈 \textbf{크기 정규화 변형}을 주 조건으로 삼았다. 이는 두 가우시안에 같은 아핀 사상을 적용한 것이므로 여전히 2-Wasserstein이다. 정규화하지 않으면 $-7.96$으로 더 나쁘다.
 \item \textbf{게이팅(박스 확장)}: $\sigma$에 비례하여 박스를 확장한 뒤 IoU 계산.
 \item \textbf{매칭 임계값}: 장면별로 임계값을 조정. $\sigma$를 포함한 장면 관측량으로 예측.
 \end{itemize}
 
 \paragraph{공정 비교를 위한 통제} 거리 함수를 교체하면 비용의 분포 자체가 달라지므로, 임계값을 그대로 두면 채택률이 변한다. 이 경우 성능 차이가 ``거리 함수의 차이''인지 ``채택률의 차이''인지 구별할 수 없다. 따라서 각 조건의 스케일 상수를 \textbf{기준선과 채택률이 일치하도록} 이분법으로 조정하였다.
 
-게이팅 경로에서는 별도의 대조군을 두었다. $\sigma$로 확장한 조건과 \textbf{동일한 총 확장량을 박스 크기에 비례하여 분배한} 조건을 비교하면, 성능 차이를 ``확장 자체의 효과''가 아니라 ``확장량을 무엇으로 정했는가''로 귀속할 수 있다.
+게이팅 경로에서는 별도의 대조군을 두었다. $\sigma$로 확장한 조건과 \textbf{동일한 총 확장량을 박스 크기에 비례하여 분배한} 조건을 비교하면, 성능 차이를 ``확장 자체의 효과''가 아니라 ``확장량을 무엇으로 정했는가''로 귀속할 수 있다. 거리 함수 경로에도 같은 성격의 대조군을 두었다 --- 동일한 Wasserstein 거리에서 $\Sigma$만 검출기 $\sigma$에서 박스 크기 $\sigma_C$로 바꾼 조건이다. \textbf{두 경로 모두 ``$\sigma$를 썼는가''와 ``무엇을 $\sigma$로 삼았는가''를 분리한다.}
 
 \section{연관 오라클 상한}
 
@@ -340,7 +340,7 @@ c_{ij} =
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_signal_transfer.pdf}
+\includegraphics{figures/fig_signal_transfer.pdf}
 \caption{동일한 $\sigma$, 동일한 시퀀스, 서로 다른 평가 대상. (a) 위치 오차에 대해서는 NMS 후보 분산이 7개 시퀀스 전부, DFL 분포 분산이 6개에서 양의 상관을 보인다. (b) 연관 오류에 대해서는 \textbf{두 산출 방식이 갈린다} --- DFL은 7개 전부가 무작위 수준(0.5) 아래인 반면 NMS는 4개가 위이고 MOT17-04는 $0.897$이다. 합친 AUC는 각각 $0.4571$, $0.5355$로 둘 다 사전 등록한 기준 $0.55$ 아래이다(5.6절). 이 산포의 원인은 규명하지 못하였다(6.4절).}
 \label{fig:transfer}
 \end{figure}
@@ -464,7 +464,7 @@ $\sigma$를 네 가지 경로에 주입하고 HOTA를 측정한 결과는 표~\r
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_ceiling.pdf}
+\includegraphics{figures/fig_ceiling.pdf}
 \caption{왼쪽: 시퀀스별 기준선 HOTA와 오라클 상한까지의 여지. 여지가 장면에 따라 13배 갈린다. 오른쪽: 결합 기준 $\Delta$HOTA. 오라클 둘과 카메라 움직임 보상만 0보다 크고, \textbf{검출기 $\sigma$를 주입한 네 경로는 전부 0보다 작다.} 거리 함수는 산출 방식을 갈라 둘로 그렸다 --- 옅은 막대가 박스 크기 $\sigma_C$($-4.98$), 진한 막대가 검출기 $\sigma$($-8.90$)이다. 비교 조건은 표~\ref{tab:channels}와 같다.}
 \label{fig:ceiling}
 \end{figure}
