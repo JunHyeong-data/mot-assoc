@@ -72,3 +72,21 @@ python experiments/exp15_sigma_last/run.py -nms && python experiments/figures/fi
 ```
 
 그림 2 오른쪽 판에 NMS 계열이 추가되고, 한계 (5) 를 결과로 옮길 수 있다.
+
+## 검사기 셋 — 컴파일 못 하는 대신 이걸 돌린다
+
+이 기계에 xelatex 이 없어 컴파일로 잡을 수 없는 것들을 기계로 본다.
+**셋 다 손으로 찾은 실제 오류에서 나왔다.**
+
+```bash
+python paper/check_tex.py paper/report.tex && python paper/check_secref.py paper/report.tex && python paper/check_numbers.py paper/report.tex
+```
+
+| 검사기 | 무엇을 잡나 | 왜 만들었나 |
+|---|---|---|
+| `check_tex.py` | 환경 짝, 중괄호, 수식 `$`, `cite`/`bibitem`, `ref`/`label`, **표의 열 개수**, 그림 파일 존재 | 표 열 수 불일치는 LaTeX 컴파일 실패 1위다 |
+| `check_secref.py` | `"N.M절"` **평문 상호참조**가 실제 절을 가리키는가 | 6.4 에 절을 신설하니 **6곳이 조용히 어긋났다** |
+| `check_numbers.py` | 핵심 수치 47개가 원고에 있는가 + **원고 안에서 일관된가** | 거리 함수 값이 다른 실험 조건이었던 것을 손으로 찾았다 |
+
+`check_numbers.py` 의 표에는 각 수치의 **출처 실험**이 적혀 있다.
+숫자가 바뀌면 그 실험을 다시 돌려 확인한다.
