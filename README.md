@@ -313,6 +313,27 @@ experiments/  실데이터 실험. exp01이 관문
 data/         (git 제외) MOT17, 공개 검출 결과
 ```
 
+## 준비 — **먼저 이걸 돌려라**
+
+```bash
+python check_setup.py
+```
+
+무엇이 없는지와 어떻게 채우는지를 알려준다. **2026-08-18 에 깨끗한 디렉터리로
+클론해서 재현성을 시험했더니** `theory/` 7개는 전부 돌았지만 `experiments/` 는
+하나도 안 돌았다 — `external/` 과 `data/` 가 git 제외인데 **그 사실이 어디에도
+안 적혀 있었다.** 오류도 `ModuleNotFoundError: No module named 'tracker'` 로만
+나왔다. 그 간극을 메우는 스크립트다.
+
+| 필요한 것 | 왜 git 에 없나 | 채우는 법 |
+|---|---|---|
+| `external/UTrack` | 외부 저장소 | `git clone https://github.com/DLR-MI/UTrack.git external/UTrack` |
+| `data/MOT17_A/ablation` | **CC BY-NC-SA 3.0 — 재배포 불가** | 직접 받는다 (`notes/data_sources.md`) |
+| `data/exp05` (검출 캐시) | 용량 | `python experiments/exp05_wasserstein/cache_detections.py` (약 110분) |
+| `data/exp01` | 용량 | `python experiments/exp01_nms_variance/run_all.py` |
+
+> **`theory/` 는 아무것도 없이 지금 바로 돈다.** numpy 와 scipy 만 있으면 된다.
+
 ## 실행
 
 ```bash
