@@ -159,9 +159,10 @@ C₃ = C_cos · d_s        (식 3)   d_s = detection confidence
 ## 아직 안 읽은 것 (정직하게)
 
 - **Deep LG-Track** (arXiv 2504.01457) — 후속. 캐스케이드가 바뀌었는지 확인 필요
-- **Bae & Yoon TPAMI'18** — tracklet confidence 라우팅. **초록만 봤다.**
-  LG-Track 이 검출 쪽을 점유했으므로 **트랙 쪽과의 구분**이 더 중요해졌다
-- **UCMCTrack** (2312.08952) — 정규화 마할라노비스 + `ln|S|`. 눈금/순위 논지에 직결
+- **Bae & Yoon TPAMI'18** — **CVPR'14 원판을 읽었다(5절).** TPAMI 판은 IEEE
+  유료라 미독. 개념(tracklet confidence)은 원판에 다 있으나 **딥 외형학습 부분은
+  TPAMI 판이 확장했으므로** 인용할 때 판본을 구분할 것
+- ~~UCMCTrack~~ — **읽었다 (4절).** 여기가 이번 정독의 최대 수확
 - **OC-SORT** (2203.14360) — observation-centric 보정이 역설과 무엇이 다른가
 - **UncertaintyTrack** — 절제표만 봤다. 본문 미독
 
@@ -170,3 +171,103 @@ C₃ = C_cos · d_s        (식 3)   d_s = detection confidence
 arXiv PDF 를 받아 `PyMuPDF` 로 본문을 뽑았다. **WebFetch 는 PDF 본문을 못 읽는다**
 (이진 데이터로 온다). LG-Track 은 2단 조판이라 `get_text(sort=True)` 를 써야
 수식이 순서대로 나온다.
+
+---
+
+## 4. UCMCTrack (Yi et al., AAAI 2024, arXiv 2312.08952) — **정독. 여기가 제일 값지다**
+
+### 무엇이 비용에 들어가는가
+
+```
+D = ε^T S^{-1} ε + ln|S|              (식 8)  "normalized Mahalanobis distance"
+S = H P H^T + R_k                     (식 7)
+R_k = C R_uv,k C^T                    (식 4)  지면 평면으로 사상
+```
+
+### **어디서 오는가 — 이게 핵심이다**
+
+```
+R_uv,k = diag( (σ_m · w_k)² ,  (σ_m · h_k)² )        (식 2)
+```
+
+> *"σ_m represents the detection noise factor as a **hyper-parameter**,
+> and w_k and h_k denote the **detected width and height** from the detector."*
+
+**이건 상자 크기 모형 그 자체다. 우리 실험의 기준선 `C` 다.**
+검출기가 내는 불확실성이 아니라 **상자 크기 × 전역 상수 하나**.
+
+### ln|S| 는 공분산 역설을 막으려고 넣은 것이다
+
+> *"This ensures that data association decisions are not solely based on the
+> discrepancies between measurements and predictions, but also holistically
+> consider the accuracy and uncertainty of measurements."*
+
+`ε^T S^{-1} ε` 만 쓰면 S 가 클수록 거리가 작아진다(역설). `ln|S|` 가 그걸 벌한다.
+**이게 사용자 브리프의 A-LL(association log-likelihood) 형태다.**
+
+### ⚠ 이 발견이 원고를 바꾼다 — **음성 결과가 설명력을 얻는다**
+
+지금까지 `C`(상자 크기 모형)는 "우리가 세운 기준선" 이었다. 이제 이렇게 된다:
+
+> **AAAI 2024 의 SOTA 트래커가 검출 측정잡음으로 정확히 `C` 를 쓴다.**
+> 그리고 우리 실험 1f 는 **`C` 가 NMS σ 를 7/7 로 이긴다**고 보였다.
+
+**즉 우리 음성 결과는 UCMCTrack 의 설계 선택을 설명한다.**
+
+| | 무엇을 R 에 넣었나 | 결과 |
+|---|---|---|
+| **UCMCTrack** (AAAI'24) | **상자 크기** (`σ_m·w`, `σ_m·h`) | SOTA |
+| UTrack (ECCV'24 W) | **검출기 NMS σ** | 우리 재현 **−0.62** |
+| UncertaintyTrack | **검출기 공분산** | 저자 보고 **−0.1** |
+
+> **같은 통로(칼만 R), 다른 소스. 상자 크기를 쓴 쪽만 이긴다.**
+> 우리 실험 1f 의 만장일치가 **왜 그런지**를 준다.
+
+**이건 순수한 음성 결과가 아니라 건설적 진술이다** — 원고의 무게중심이 여기로
+옮겨갈 수 있다. `C` 는 허수아비가 아니라 **배포된 SOTA 의 실제 모형**이다
+(NWD 에 이어 두 번째 확인).
+
+---
+
+## 5. Bae & Yoon (CVPR 2014) — **정독.** TPAMI'18 의 원판
+
+> TPAMI'18 은 IEEE 유료라 못 받았다. **같은 저자의 CVPR 2014 원판**을 읽었다
+> (tracklet confidence 개념의 출처). CVF 공개판.
+
+### tracklet confidence (식 2)
+
+```
+conf(T^i) = (1/L) · Σ_{k: v_i(k)=1} Λ(T^i, z_k^i)  ×  max(1 + β·log((L−w)/L), 0)
+```
+
+- `L` = tracklet 길이, `w` = 가림 등으로 **놓친 프레임 수**, `Λ` = affinity
+- 앞항 = **검출가능성**(평균 affinity), 뒷항 = **연속성**(놓친 프레임 벌점)
+- `conf ∈ [0,1]`, **0.5** 로 높음/낮음을 가른다
+
+### **어떻게 쓰이는가 — 비용이 아니라 라우팅이다**
+
+> *"the tracklets with **high confidence** are first considered to be **locally
+> associated with detections** ... "*
+
+- **높은 confidence 트랙** → 검출과 **지역(local) 연관**
+- **낮은 confidence 트랙** → 다른 트랙·검출과 **전역(global) 연관**
+
+비용 자체는 `c_ij = −log(Λ(T^i(lo), y_j^t))` 로 **affinity 의 음의 로그**이고,
+**confidence 는 비용 안에 안 들어간다.** 어느 연관 문제에 들어갈지를 정할 뿐이다.
+
+**즉 트랙 쪽 양이고, 순수한 라우팅이다.** `direction.md` 의 기록이 맞았다.
+
+### 그래서 재설계한 E2 의 자리가 정확해진다
+
+| 방법 | 신호 | 어느 쪽 | 쓰임 |
+|---|---|---|---|
+| DeepSORT (2017) | 트랙 나이 | 트랙 | 캐스케이드 순서 |
+| **Bae** (2014/2018) | tracklet confidence (검출가능성+연속성) | **트랙** | **라우팅** (지역/전역) |
+| **LG-Track** (2023) | 위치 품질 + 분류 신뢰도 | **검출** | **4단계 캐스케이드** |
+| **우리 E2** | **σ (산포)** | **검출** | 캐스케이드 순서 |
+
+**Bae 의 confidence 는 트랙 이력 양**(길이·놓친 프레임·평균 affinity)이라
+검출기 출력 불확실성과 **겹치지 않는다.** E2 와 혼동될 여지가 없다.
+
+**E2 의 정확한 위치**: LG-Track 과 **같은 쪽·같은 통로**, **다른 소스**
+(품질 아닌 산포). 그렇게 써야 정직하다.

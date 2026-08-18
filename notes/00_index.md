@@ -14,9 +14,9 @@
 | 2 | DeepSORT (Wojke et al., ICIP 2017) | **정독 완료** | `primary_reading.md` 2절 |
 | 3 | ByteTrack (Zhang et al., ECCV 2022) | **정독 완료** | `primary_reading.md` 1절 |
 | 4 | OC-SORT (Cao et al., CVPR 2023) | | |
-| 5 | UCMCTrack (Yi et al., AAAI 2024) | | |
-| 6 | Bae & Yoon, CVPR 2014 — Tracklet Confidence | | |
-| 7 | **Bae & Yoon, TPAMI 40(3) 2018 — Confidence-Based Data Association** | 초록 확인 | `uncertainty_related_work.md` |
+| 5 | UCMCTrack (Yi et al., AAAI 2024) | **정독 완료** | `primary_reading.md` 4절 |
+| 6 | Bae & Yoon, CVPR 2014 — Tracklet Confidence | **정독 완료** | `primary_reading.md` 5절 |
+| 7 | **Bae & Yoon, TPAMI 40(3) 2018 — Confidence-Based Data Association** | 초록 (IEEE 유료). **CVPR'14 원판으로 대체 정독** | `primary_reading.md` 5절 |
 | 8 | **UTrack (Solano-Carrillo et al., ECCV24 UnCV)** | 정독 + **재현 완료** | `../experiments/exp02_utrack_replication/` |
 | 9 | **UncertaintyTrack (Lee & Waslander, arXiv:2402.12303)** | 절제표 확인 | `uncertainty_related_work.md` |
 | 10 | Localization-Guided Track (arXiv:2309.09765) | **정독 완료** | `primary_reading.md` 3절 |
