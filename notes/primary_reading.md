@@ -271,3 +271,147 @@ conf(T^i) = (1/L) · Σ_{k: v_i(k)=1} Λ(T^i, z_k^i)  ×  max(1 + β·log((L−w
 
 **E2 의 정확한 위치**: LG-Track 과 **같은 쪽·같은 통로**, **다른 소스**
 (품질 아닌 산포). 그렇게 써야 정직하다.
+
+---
+
+## 6. UncertaintyTrack (Lee & Waslander, arXiv 2402.12303) — **본문 정독**
+
+지금까지 **절제표만** 봤다. 본문을 읽으니 원고에 직접 쓸 것이 셋 나왔다.
+
+### ① 저자의 미해결 질문을 **원문 그대로** 확보했다
+
+> *"We hypothesize that this inconsistency in results may be due to the choice of
+> distribution to model the uncertainty distribution. **It is possible that the
+> multivariate Gaussian distribution does not accurately represent the true
+> underlying uncertainty distribution**, suggesting that the uncertainty estimates
+> might not be compatible with the Kalman Filter.
+> **This remains an area for future investigation.**"*
+
+**우리 원고가 숫자로 답하겠다고 한 자리가 바로 여기다.** 그리고 답이 두 겹이다:
+
+| 그들의 추측 | 우리 측정 |
+|---|---|
+| "가우시안이 참 분포를 잘 나타내지 못할 수 있다" | **맞다.** 꼬리비 **12~213** (가우시안이면 1.0) |
+| "그래서 칼만과 안 맞는 듯" | **그게 이유가 아니다.** Student-t 를 ν=1(코시, 격자 바닥)까지 줘도 **7/7 로 진다** |
+
+> **"당신 말이 맞다. 가우시안은 틀렸다. 그런데 고쳐도 안 된다."**
+> 이게 실험 1f 가 문헌에 대해 하는 말이다. **미해결로 남긴 질문에 대한 직접 답**이다.
+
+### ② 그들 스스로 칼만 R 성분이 **단독으로는 해롭다**고 적었다
+
+> *"the use of predicted box covariance as measurement uncertainty in the Kalman
+> Filter complements the other components but **decreases performance as a
+> stand-alone extension**."*
+
+### ③ 성분별 절제(Table V, ByteTrack* / BDD100K val) — **우리 통로 성적표와 맞는다**
+
+| 성분 | mMOTA | mIDF1 | 기여 |
+|---|---|---|---|
+| 기준선 ByteTrack* | 32.5 | 42.1 | — |
+| **칼만 R (KF)** | **32.4** | 41.6 | **−0.1** |
+| 신뢰타원 여과 | 32.6 | 42.1 | +0.1 |
+| **+ 상자 확장 (Relaxation)** | **34.8** | **45.1** | **+2.2 / +3.0 — 최대** |
+| + **엔트로피 그리디 매칭** | **35.1** | 45.5 | **약 +0.2 — 최소** |
+
+저자 서술: *"The biggest improvement is observed with uncertainty-aware box
+relaxation, increasing mMOTA and mIDF1 by **2.2 and 3.0** points"*
+
+### ⚠ ④ **엔트로피 그리디 매칭이 E2 통로를 또 점유한다**
+
+> *"at the final matching step with expanded boxes, we employ **greedy matching
+> based on the Gaussian entropy** of the predicted [distributions]"*
+
+가우시안 엔트로피는 `|Σ|` 의 단조함수다. **즉 검출 불확실성으로 매칭 순서를
+정하는 것** — 내가 제안한 E2 그 자체다. LG-Track 에 이어 **두 번째 점유**다.
+
+**그런데 이게 원고에 좋은 소식이다.** 그들 자신의 절제가 말한다:
+- 이 성분의 기여가 **넷 중 가장 작다 (약 +0.2)**
+- 저자 주석: *"the detections before the box relaxation step are generally far
+  from each other for greedy matching to have sufficient impact"*
+
+> ### **독립적 확증이다**
+> 우리 실험 6 은 순위형 자리(임계값)의 **신탁 상한이 +0.892** 라고 했다.
+> UncertaintyTrack 은 **다른 순위형 자리**(매칭 순서)에서 **+0.2** 를 얻었다.
+> **서로 다른 두 연구가 "순위형 자리에는 여지가 작다" 로 수렴한다.**
+
+---
+
+## 7. OC-SORT (Cao et al., CVPR 2023, arXiv 2203.14360) — **정독**
+
+### 무엇을 고치는가 — **평균의 표류이지 공분산이 아니다**
+
+- 문제 정의: **temporal error magnification**. 가림으로 관측이 없는 동안
+  KF 추정의 오차가 시간에 따라 증폭된다.
+  *"can accumulate a shift in final position estimation as large as the object size"*
+- 진단: SORT 가 **estimation-centric** 이다 — 관측이 없을 때 추정을 믿는다
+- 처방: **ORU**(관측 중심 재갱신), **OCM**(방향 일관성 항을 비용에 더함),
+  **OCR**(관측 중심 복구)
+
+### **`uncertainty` 가 본문에 0회 나온다**
+
+OC-SORT 는 이걸 **불확실성 문제로 틀 짓지 않는다.** 궤적 추정의 **편향** 문제로 본다.
+
+> ### 가림에서 실패하는 방식이 **둘**이라는 것이 여기서 분명해진다
+>
+> | 실패 | 무엇이 망가지나 | 누가 다뤘나 | 어떻게 |
+> |---|---|---|---|
+> | **평균 표류** | 예측 위치가 밀린다 | **OC-SORT** | 관측으로 재갱신 (**고침**) |
+> | **공분산 팽창** | Σ 가 커져 마할라노비스가 작아진다 (역설) | **DeepSORT** | 캐스케이드로 **우회** |
+>
+> **둘 다 비용 안의 공분산은 안 고친다.** 우리 연구가 서 있는 자리가 정확히 그 사이다.
+
+OCM 은 **방향 일관성**을 비용에 더하는데, 트랙 방향과 검출 위치에 **함께** 의존하는
+쌍 항이다 → **검출별 스칼라가 아니므로 우리 제약의 반례가 아니다.**
+
+---
+
+## 8. Deep LG-Track (Meng et al., 2025, arXiv 2504.01457) — **정독**
+
+### 세 가지 기여 — **캐스케이드가 가중으로 바뀌었다**
+
+1. **적응 칼만 필터**: 측정잡음 공분산을 **검출 신뢰도 + 궤적 소실**로 동적 갱신
+2. **적응 비용행렬**: 운동 비용과 외형 비용의 **가중치**를 위치 신뢰도·검출 신뢰도로
+3. 외형 특징 갱신을 **검출 품질**에 따라 동적으로
+
+**기여 목록에 4단계 캐스케이드가 없다.** LG-Track(2023)의 **캐스케이드**가
+후속작에서 **한 비용행렬 안의 가중**으로 옮겨간 것으로 읽힌다.
+(단 "four-level" 이라는 표현이 본문에 안 나온다는 것이 근거이므로 **단정하지 않는다**.)
+
+### 덤 — 칼만 R 을 검출별 스칼라로 조절하는 계보가 정리된다
+
+본문이 선행 변형을 짚는다: **NSAKF**(Du et al., 검출 품질로 측정잡음 조절),
+**PAKF**(Liu et al., IoU 로 과정·측정 잡음을 따로 조절).
+
+| 방법 | R 을 무엇으로 정하나 |
+|---|---|
+| **UCMCTrack** | **상자 크기** × 전역 σ_m ← **우리 기준선 `C`** |
+| NSAKF (StrongSORT 등) | **검출 신뢰도** |
+| PAKF | IoU |
+| **Deep LG-Track** | 검출 신뢰도 + 궤적 소실 |
+| UTrack / UncertaintyTrack | **검출기가 낸 공분산** ← **손해 나는 쪽** |
+
+> **"R 을 검출별로 조절한다" 는 이미 붐빈 자리다.** 갈리는 것은 **무엇으로** 조절하냐이고,
+> **검출기가 낸 σ 로 조절한 두 편만 손해를 본다.**
+
+---
+
+## 정독 8편이 원고에 남긴 것 — 종합
+
+**강해진 것 넷**
+
+1. `fuse_score` 는 ByteTrack **논문에 없다** → 설계 제약 절의 근거
+2. **UCMCTrack 의 R = 우리 기준선 `C`** → 음성 결과가 SOTA 설계를 설명한다
+3. **DeepSORT 가 2017년에 역설을 지목하고 우회했다** → 서론
+4. **UncertaintyTrack 의 미해결 질문 원문 확보** → 실험 1f 가 그 답이다
+
+**바뀐 것 하나 — E2 를 접는다**
+
+순위형 통로(연관 순서)는 **LG-Track 과 UncertaintyTrack 이 이미 점유**했고,
+UncertaintyTrack 의 절제가 **그 성분이 가장 작게 기여(+0.2)** 한다고 말한다.
+**우리 실험 6 의 신탁 상한 +0.892 와 같은 방향이다.**
+
+> **E2 는 새 실험이 아니라 이미 나온 두 증거의 확인이 된다.**
+> 돌릴 값어치가 크게 줄었다. **대신 이 두 수치를 원고 8절에 인용한다** —
+> *"순위형 자리에는 여지가 작다" 를 우리 신탁 상한과 남의 절제가 함께 말한다.*
+
+**남는 실험은 E1 하나다** (가산 대 곱 실증).

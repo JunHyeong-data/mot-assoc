@@ -13,14 +13,14 @@
 | 1 | SORT (Bewley et al., ICIP 2016) | 정독 완료 | `sort.md` |
 | 2 | DeepSORT (Wojke et al., ICIP 2017) | **정독 완료** | `primary_reading.md` 2절 |
 | 3 | ByteTrack (Zhang et al., ECCV 2022) | **정독 완료** | `primary_reading.md` 1절 |
-| 4 | OC-SORT (Cao et al., CVPR 2023) | | |
+| 4 | OC-SORT (Cao et al., CVPR 2023) | **정독 완료** | `primary_reading.md` 7절 |
 | 5 | UCMCTrack (Yi et al., AAAI 2024) | **정독 완료** | `primary_reading.md` 4절 |
 | 6 | Bae & Yoon, CVPR 2014 — Tracklet Confidence | **정독 완료** | `primary_reading.md` 5절 |
 | 7 | **Bae & Yoon, TPAMI 40(3) 2018 — Confidence-Based Data Association** | 초록 (IEEE 유료). **CVPR'14 원판으로 대체 정독** | `primary_reading.md` 5절 |
 | 8 | **UTrack (Solano-Carrillo et al., ECCV24 UnCV)** | 정독 + **재현 완료** | `../experiments/exp02_utrack_replication/` |
-| 9 | **UncertaintyTrack (Lee & Waslander, arXiv:2402.12303)** | 절제표 확인 | `uncertainty_related_work.md` |
+| 9 | **UncertaintyTrack (Lee & Waslander, arXiv:2402.12303)** | **본문 정독 완료** | `primary_reading.md` 6절 |
 | 10 | Localization-Guided Track (arXiv:2309.09765) | **정독 완료** | `primary_reading.md` 3절 |
-| 10b | Deep LG-Track (2504.01457) | 미독 | 후속. 캐스케이드 변경 여부 확인 필요 |
+| 10b | Deep LG-Track (2504.01457) | **정독 완료** | `primary_reading.md` 8절 |
 
 **7~10 은 `uncertainty_related_work.md` 에서 "불확실성이 어느 통로로 할당에
 도달하는가" 라는 네 번째 질문으로 함께 대조한다.** 그 표가 이 연구의 논지다.
