@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """실험 15 -- **σ 의 마지막 시험.** 통로와 무관하게, 연관 오류를 짚는가.
 
+두 소스를 같은 절차로 잰다:
+    python experiments/exp15_sigma_last/run.py         # DFL 분포 분산
+    python experiments/exp15_sigma_last/run.py -nms    # NMS 후보 산포
+
 사전 선언은 `PREREG.md` (자료보다 먼저 커밋).
 
 exp01 은 σ 가 **위치 오차**를 예측한다고 했다. 우리는 그것이 **연관 오류**로
@@ -30,6 +34,10 @@ from ultralytics.trackers.utils import matching                 # noqa: E402
 from replay import WTracker, Det, load, SEQS, BASE              # noqa: E402
 from run import det_gt_ids, gt_by_frame, GDet                   # noqa: E402
 from stage_util import which_stage, stage_thresh                # noqa: E402
+
+# 소스 갈래. 기본은 DFL(캐시 기본 npz), "-nms" 면 NMS 후보 산포.
+SRC = "w_nms" if "-nms" in sys.argv else "iou"
+SRC_NAME = "NMS 후보 산포" if SRC == "w_nms" else "DFL 분포 분산"
 
 REC = []          # 채택된 쌍마다 한 줄
 CALLS = {}        # 단계별 get_dists 호출 수 (진단)
@@ -116,12 +124,17 @@ def main():
     print("=" * 92)
     print("실험 15 -- σ 의 마지막 시험. 통로와 무관하게 연관 오류를 짚는가")
     print("=" * 92)
-    print("사전 선언 PREREG.md (자료보다 먼저)")
+    print("사전 선언 PREREG.md (자료보다 먼저)   **소스 = %s**" % SRC_NAME)
     print("exp01 은 σ 가 **위치 오차**를 예측한다고 했다. **연관 오류**는 안 쟀다.")
     print()
 
     for seq in SEQS:
-        c = load(seq, "iou")
+        c = load(seq, SRC)
+        if c is None:
+            raise SystemExit(
+                "소스 %r 캐시가 없다 (%s). 먼저 만들어라: "
+                "python experiments/exp05_wasserstein/cache_nms.py"
+                % (SRC, seq))
         gid = det_gt_ids(c, gt_by_frame(seq))
         tr = ProbeTracker(SimpleNamespace(**BASE), "iou", 1.0, frame_rate=30)
         for f in range(1, c["n_frames"] + 1):
