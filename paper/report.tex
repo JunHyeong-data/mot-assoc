@@ -143,14 +143,52 @@
 
 \section{신호의 산출 방식과 주입 경로}
 
-검출 불확실성을 데이터 연관에 활용하는 연구는 두 가지 축으로 정리할 수 있다. 하나는 \textbf{신호를 어디서 얻는가}(산출 방식)이고, 다른 하나는 \textbf{그 신호를 어디에 넣는가}(주입 경로)이다. 본 연구는 이 두 축을 분리하여 보는 것이 문헌의 성패를 이해하는 데 핵심이라고 본다. 그림~\ref{fig:map}에 주요 방법들의 위치와 보고된 결과를 정리하였다.
+검출 불확실성을 데이터 연관에 활용하는 연구는 두 가지 축으로 정리할 수 있다. 하나는 \textbf{신호를 어디서 얻는가}(산출 방식)이고, 다른 하나는 \textbf{그 신호를 어디에 넣는가}(주입 경로)이다. 본 연구는 이 두 축을 분리하여 보는 것이 문헌의 성패를 이해하는 데 핵심이라고 본다. 표~\ref{tab:landscape}에 주요 방법들을 \textbf{산출 방식으로 묶어} 정리하였다.
 
-\begin{figure}[htbp]
+\begin{table}[htbp]
 \centering
-\includegraphics{figures/fig_source_channel.pdf}
-\caption{신호의 산출 방식(가로축) $\times$ 주입 경로(세로축) 지도. 각 칸은 해당 조합을 사용한 방법과 보고된 결과를 나타낸다. 기울임체는 본 연구의 결과이다. 모든 항목은 원문을 직접 확인하여 작성하였다. \textbf{열을 따라 읽으면 패턴이 보인다} --- 박스 크기 열은 대부분 이득이 보고된 반면, \textbf{검출기 $\sigma$ 열은 연관 순서 한 칸을 빼면 전부 손실}이다. 빈 칸도 정보이다 --- 예컨대 박스 크기를 연관 순서에 쓴 사례는 없다.}
-\label{fig:map}
-\end{figure}
+\small
+\caption{검출 불확실성을 데이터 연관에 넣은 방법들. \textbf{산출 방식으로 묶어 정렬하였다.} 보고된 결과의 단위가 서로 달라(HOTA, mMOTA, AP) 하나의 축에 올릴 수 없으므로 원문의 표현을 그대로 옮겼다. 모든 항목은 원문을 직접 확인하였다. 기울임체는 본 연구의 측정값이다.}
+\label{tab:landscape}
+\begin{tabular}{llll}
+\toprule
+\textbf{방법} & \textbf{주입 경로} & \textbf{보고/측정된 결과} & \textbf{출처} \\
+\midrule
+\multicolumn{4}{l}{\textit{산출 방식: 박스 크기(기하)}} \\
+UCMCTrack & 칼만 필터 $R$ & SOTA 달성 & \citep{yi2024} \\
+NWD & 거리 함수 & 검출 과제에서 이득(추적 아님) & \citep{wang2021} \\
+\textit{본 연구(대조군)} & \textit{거리 함수} & \textit{$-4.98$ (검출기 $\sigma$보다 $3.92$ 우수)} & \textit{5.3절} \\
+\textit{본 연구(대조군)} & \textit{게이팅} & \textit{검출기 $\sigma$보다 $3.81$ 우수} & \textit{5.3절} \\
+\midrule
+\multicolumn{4}{l}{\textit{산출 방식: 검출 신뢰도}} \\
+NSA Kalman & 칼만 필터 $R$ & 채택됨 & \citep{du2023} \\
+ByteTrack 구현 & 비용 곱셈 & 논문에 근거 없음 & 2.4절 \\
+\midrule
+\multicolumn{4}{l}{\textit{산출 방식: 위치 품질}} \\
+LG-Track & 비용 곱셈 & 이득 보고(식 1, 3) & \citep{meng2023} \\
+LG-Track & 연관 순서 & 4단계 캐스케이드 & \citep{meng2023} \\
+\midrule
+\multicolumn{4}{l}{\textit{산출 방식: 검출기 산출 $\sigma$}} \\
+UTrack & 칼만 필터 $R$ & \textit{본 연구 재현 $-0.62$} & \citep{solano2024} \\
+UncertaintyTrack & 칼만 필터 $R$ & 저자 보고 $-0.1$ & \citep{lee2024} \\
+UncertaintyTrack & 게이팅 & 저자 보고 mMOTA $+2.2$ & \citep{lee2024} \\
+UncertaintyTrack & 연관 순서 & 저자 보고 $+0.2$ & \citep{lee2024} \\
+\textit{본 연구} & \textit{비용 덧셈} & \textit{$-3.75$} & \textit{5.4절} \\
+\textit{본 연구} & \textit{비용 곱셈} & \textit{$-1.01$} & \textit{5.4절} \\
+\textit{본 연구} & \textit{거리 함수} & \textit{$-8.90$} & \textit{5.3절} \\
+\textit{본 연구} & \textit{게이팅} & \textit{$-4.33$} & \textit{5.3절} \\
+\textit{본 연구} & \textit{매칭 임계값} & \textit{$-0.21$ (오라클 $+0.89$)} & \textit{5.3절} \\
+\midrule
+\multicolumn{4}{l}{\textit{산출 방식: 트랙 쪽 이력}} \\
+DeepSORT & 연관 순서 & 매칭 캐스케이드 & \citep{wojke2017} \\
+Bae와 Yoon & 연관 순서(라우팅) & 이득 보고 & \citep{bae2014} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{표를 세로로 읽으면 패턴이 보인다.} 박스 크기와 검출 신뢰도를 사용한 방법들은 이득을 보고한 반면, \textbf{검출기가 산출한 $\sigma$를 사용한 항목은 연관 순서 하나를 제외하면 모두 손실이다.} 특히 칼만 필터 측정잡음이라는 \textbf{같은 경로}에서도 결과가 갈린다 --- 박스 크기를 넣은 UCMCTrack은 SOTA를 달성하였고, 검출기 $\sigma$를 넣은 두 연구는 모두 손실을 보고하였다. 6.2절에서 이 패턴에 대한 설명을 제시한다.
+
+표에 없는 조합도 정보이다. 본 연구가 확인한 범위에서 \textbf{박스 크기를 연관 순서에 사용한 사례}나 \textbf{검출 신뢰도를 게이팅에 사용한 사례}는 없었다. 또한 \textbf{비용에 덧셈으로 넣은 사례가 본 연구 외에 하나도 없다} --- 4.1절에서 그 이유를 설명한다.
 
 \section{산출 방식: 무엇을 불확실성으로 삼는가}
 

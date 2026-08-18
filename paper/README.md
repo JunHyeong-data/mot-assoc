@@ -32,8 +32,17 @@ python experiments/figures/fig_source_channel.py && python experiments/figures/f
 
 | 파일 | 논문 위치 | 무엇 |
 |---|---|---|
-| `fig_source_channel.pdf` | 그림 1 (2장) | 신호의 산출 방식 × 주입 경로 지도. 문헌 성패가 산출 방식을 따라 갈린다 |
-| `fig_signal_transfer.pdf` | 그림 2 (5.1절) | 같은 σ, 같은 시퀀스, 다른 평가 대상. 왼쪽은 0 위, 오른쪽은 0.5 아래 |
+| `fig_signal_transfer.pdf` | 그림 1 (5.1절) | 같은 σ, 같은 시퀀스, 다른 평가 대상. 위치 오차는 0 위, 연관 오류는 소스에 따라 갈린다 |
+| `fig_ceiling.pdf` | 그림 2 (5.5절) | 여지는 +3.12 있는데 검출기 σ 경로 넷은 전부 0 아래 |
+
+**`fig_source_channel.py` 는 더 이상 원고에 안 쓴다.** 7×5 격자에 글자를 채운
+것이라 **사실 표였고**, 35칸 중 20칸이 비어 지면의 절반이 흰 칸이었다.
+**표 2.1** 로 옮겼다 — 산출 방식으로 묶어 정렬하니 패턴이 세로로 읽힌다.
+스크립트는 지우지 않는다 (CLAUDE.md 규칙 4).
+
+공통 서식은 `experiments/figures/style.py` 에 있다. 그림은 **지면 크기(6.2in)로
+직접 만들고 `\includegraphics` 에 width 옵션을 안 준다** — 배율이 없어야
+8pt 로 설계한 글자가 지면에서도 8pt 다.
 
 ## 수치의 출처
 
