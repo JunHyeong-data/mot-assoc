@@ -25,7 +25,7 @@ winget install MiKTeX.MiKTeX
 다시 만들려면 저장소 뿌리에서:
 
 ```bash
-python experiments/figures/fig_source_channel.py && python experiments/figures/fig_signal_transfer.py
+python experiments/figures/fig_signal_transfer.py && python experiments/figures/fig_ceiling.py
 ```
 
 산출물이 뿌리의 `figures/` 에 떨어지므로 `paper/figures/` 로 복사한다.

@@ -605,26 +605,11 @@ AUC (박스 크기 기반 $\sigma_C$) & \multicolumn{2}{c}{0.4661} \\
 
 \section{같은 경로, 다른 산출 방식: 문헌의 성패에 대한 설명}
 
-2.3절에서 관찰한 바와 같이 칼만 필터 측정잡음이라는 \textbf{같은 경로}에서도 문헌의 결과가 갈린다(표~\ref{tab:same_channel}).
+2.3절에서 관찰한 바와 같이 칼만 필터 측정잡음이라는 \textbf{같은 경로}에서도 문헌의 결과가 갈린다. 표~\ref{tab:landscape}의 해당 행만 추리면 다음과 같다 --- 박스 크기를 넣은 UCMCTrack\citep{yi2024}은 SOTA를 달성하였고, 검출 신뢰도를 넣은 NSA Kalman\citep{du2023}은 널리 채택되었으며, \textbf{검출기가 산출한 $\sigma$를 넣은 두 연구}(UTrack\citep{solano2024}, UncertaintyTrack\citep{lee2024})\textbf{는 모두 손실을 보고하였다.}
 
-\begin{table}[htbp]
-\centering
-\small
-\caption{칼만 필터 측정잡음 경로에서 산출 방식에 따른 결과}
-\label{tab:same_channel}
-\begin{tabular}{llr}
-\toprule
-\textbf{방법} & \textbf{$R$에 사용한 것} & \textbf{결과} \\
-\midrule
-UCMCTrack\citep{yi2024} & 박스 크기 $(\sigma_m w, \sigma_m h)$ & SOTA \\
-NSA Kalman\citep{du2023} & 검출 신뢰도 $(1-c)R$ & 채택 \\
-UTrack\citep{solano2024} & 검출기 산출 $\sigma$ & 본 연구 재현 $-0.62$ \\
-UncertaintyTrack\citep{lee2024} & 검출기 산출 공분산 & 저자 보고 $-0.1$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+\textbf{즉 성공한 쪽의 공통점은 ``박스 크기''가 아니라, 실패한 쪽의 공통점이 ``검출기가 산출한 $\sigma$''이다.} 이 구분이 중요하다 --- NSA Kalman은 박스 크기를 쓰지 않고도 채택되었으므로, 성공 조건을 기하학적 정보로 좁힐 근거는 없다. 자료가 지지하는 것은 \textbf{검출기 산출 불확실성을 넣은 쪽이 일관되게 진다}는 관찰뿐이다.
 
-\textbf{박스 크기를 사용한 쪽만 성공한다.} 5.2절의 결과 --- 박스 크기 모형이 검출별 공분산 모형을 7개 시퀀스 전부에서 이긴다 --- 가 이 패턴에 대한 설명을 제공한다.
+5.2절의 결과가 이 패턴에 대한 설명을 제공한다 --- NMS 후보 분산은 밀도 모형으로 박스 크기 모형에 7개 시퀀스 전부에서 패배하였다. \textbf{다만 이 설명은 NMS 후보 분산에 한정된다.} DFL 분포 분산은 같은 비교에서 방향이 반대였으므로(5.2절), ``검출기 산출 $\sigma$는 모형으로 쓸 수 없다''는 일반 명제로 확장하지는 않는다. 문헌의 두 실패 사례가 사용한 산출 방식은 NMS 후보 분산(UTrack)과 학습된 공분산(UncertaintyTrack)이며, \textbf{후자는 본 연구가 재현하지 않았다}(7.2절 한계 (8)).
 
 이 관찰은 본 연구의 비교 기준인 모형 C의 정당성도 뒷받침한다. C는 임의로 세운 기준선이 아니라 \textbf{실제로 배포된 방법의 모형}이다. 다만 정확히는 같은 계열의 다른 형태이다 --- NWD는 $\mathrm{diag}(w^2/4, h^2/4)$의 비등방 형태에 고정 스케일을, UCMCTrack은 $(\sigma_m w, \sigma_m h)$의 비등방 형태를 사용하는 반면 본 연구의 C는 $\mathrm{diag}(h^2, h^2)$의 등방 형태에 스케일을 적합한다.
 
