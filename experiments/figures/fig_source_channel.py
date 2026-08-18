@@ -53,7 +53,10 @@ CELLS = {
     (2, 1): ("NSA Kalman\n$\\tilde R=(1-c)R$", "+", False),
     (2, 3): ("UTrack $-0.62$\nUncTrack $-0.1$", "-", False),
     (3, 0): ("ours (control)\nbeats $\\sigma$ by 3.81", "0", True),
-    (3, 3): ("UncTrack $+2.2$\nours $-4.33$", "+", False),
+    # **한 칸에 두 이야기가 있다.** UncTrack 의 +2.2 는 상자확장 전체의 이득이고,
+    # 우리 -4.33 은 "확장량을 맞췄을 때 sigma 로 정한 쪽이 크기로 정한 쪽보다"
+    # 얼마나 나쁜가다. **다른 양이므로 같은 색으로 칠하면 오해를 부른다.**
+    (3, 3): ("UncTrack $+2.2$ (expansion)" + chr(10) + "ours: $" + chr(92) + "sigma$-driven $-4.33$", "m", False),
     (4, 2): ("LG-Track\n4-level cascade", "+", False),
     (4, 3): ("UncTrack\nentropy $+0.2$", "+", False),
     (4, 4): ("DeepSORT (age)\nBae (routing)", "+", False),
