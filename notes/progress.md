@@ -731,7 +731,8 @@ python experiments/exp06_levers/loso.py       # R0~R3 판정
 
 ### [6] 데이터셋을 다 넣어도 안 된다 — **확장 계획이 무효다**
 
-MOT17 7 + MOT20 4 + DanceTrack val 25 + KITTI 21 ≈ **57개**. (뒤 둘은 확인 필요)
+MOT17 7 + MOT20 4 + DanceTrack val 25 + KITTI 21 ≈ **57개**.
+(**DanceTrack 25 는 원문으로 확인했다** — 40/25/35 분할. KITTI 21 은 미확인)
 **591개가 필요한데 57개다.** 검출 캐싱 110분을 세 번 더 써도 한 자릿수 모자란다.
 
 > **진행 기록이 여섯 번 "MOT20/DanceTrack 을 넣어야 결론이 된다" 고 적었다.
