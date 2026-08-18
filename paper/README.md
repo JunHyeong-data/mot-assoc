@@ -90,3 +90,23 @@ python paper/check_tex.py paper/report.tex && python paper/check_secref.py paper
 
 `check_numbers.py` 의 표에는 각 수치의 **출처 실험**이 적혀 있다.
 숫자가 바뀌면 그 실험을 다시 돌려 확인한다.
+
+### `check_refs.py` — 참고문헌을 Crossref 로 대조
+
+```bash
+python paper/check_refs.py paper/report.tex
+```
+
+인용 하나가 이미 틀려 있었다 — `solano2024` 에 UTrack 이 아니라 같은 저자의
+**다른 논문 제목**이 들어가 있었다. 그건 사람 눈으로 잡았고, 나머지를 기계로 봤더니
+**심사 논문이 있는데 arXiv 로만 인용한 것이 둘** 나왔다:
+
+| 항목 | 원고에 있던 것 | 실제 게재 |
+|---|---|---|
+| `lee2024` UncertaintyTrack | arXiv:2402.12303 | **ICRA 2024, 4946–4953** |
+| `meng2023` LG-Track | arXiv:2309.09765 | **IEEE Sensors Journal 25, 5282–5293 (2025)** |
+
+나머지 다섯(OC-SORT, GFLv2, UTrack, UCMCTrack, ByteTrack)은 권·쪽을 보강했다.
+
+`kuhn1955`·`milan2016`·`wang2021` 은 arXiv 전용이거나 1955년 논문이라 Crossref 가
+엉뚱한 것을 물어 온다. **손으로 확인하고** 스크립트의 `KNOWN_MISS` 에 등록했다.

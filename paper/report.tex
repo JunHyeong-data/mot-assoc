@@ -469,8 +469,8 @@ $\sigma$를 네 가지 경로에 주입하고 HOTA를 측정한 결과는 표~\r
 \textbf{항목} & \textbf{덧셈} & \textbf{곱셈} \\
 \midrule
 임계값 적용 전 할당 일치율 ($N \le M$, 2{,}614건) & 99.54\% & 96.06\% \\
+\quad 불일치 12건 중 최적성 위배 & \textbf{0건} & --- \\
 임계값 적용 전 할당 일치율 ($N > M$, 31건) & 54.84\% & --- \\
-\quad 불일치 중 최적성 위배 & \textbf{0건} & --- \\
 임계값 적용 후 채택 쌍이 달라진 호출 & \textbf{65.41\%} & 32.85\% \\
 최종 HOTA & $-3.750$ & $-1.014$ \\
 \bottomrule
@@ -748,7 +748,7 @@ MOT17-10 & 6.02 & $+1.58$ & 26\% & $+1.57$ & 3.33 \\
 
 \section{재현성}
 
-본 연구의 모든 실험은 사전 등록된 계획에 따라 수행되었으며, 실험 계획 문서는 데이터 생성 이전에 저장소에 커밋되었다. 사전 등록 문서 15편에서 세어 평가지표 52개, 사전 점검 27개였다. 유의수준 0.05에서 우연히 유의해질 것으로 기대되는 개수는 2.6개이나, 유의성을 확보한 결과는 하나(5.2절)이며 그것은 음의 방향이다.
+본 연구의 모든 실험은 사전 등록된 계획에 따라 수행되었으며, 실험 계획 문서는 데이터 생성 이전에 저장소에 커밋되었다. 사전 등록 문서 15편을 대상으로 세었을 때 평가지표 52개, 사전 점검 27개였다(이후 실험 16이 추가되었다). 유의수준 0.05에서 우연히 유의해질 것으로 기대되는 개수는 2.6개이나, 유의성을 확보한 결과는 하나(5.2절)이며 그것은 음의 방향이다.
 
 연구 과정에서 16건의 결론을 철회하였으며, 이를 삭제하지 않고 원인과 함께 기록으로 남겼다. 그중에는 라이브러리 가로채기 과정의 좌표계 오류, 무작위 씨앗 미고정, 사전 등록한 절차를 따르지 않은 값으로 판정한 사례 등이 포함된다. 특히 세 번째 경우에는 올바른 절차로 다시 측정하였을 때 결과의 부호가 반대로 나왔다. 마지막 한 건은 \textbf{본 원고를 작성하는 과정에서 발생하였다} --- 6.2절에 측정 없이 방향을 예측하는 문장을 적었고, 이를 사후에 측정하여 철회하였다(6.2절). \textbf{원고의 문장도 자료와 같은 검사를 받아야 한다.}
 
@@ -772,7 +772,7 @@ Simple online and realtime tracking.
 \bibitem[Cao et al.(2023)]{cao2023}
 Cao, J., Pang, J., Weng, X., Khirodkar, R., \& Kitani, K. (2023).
 Observation-centric SORT: Rethinking SORT for robust multi-object tracking.
-\textit{IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}.
+\textit{IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 9686--9696.
 
 \bibitem[Du et al.(2023)]{du2023}
 Du, Y., Zhao, Z., Song, Y., Zhao, Y., Su, F., Gong, T., \& Meng, H. (2023).
@@ -787,12 +787,12 @@ The Hungarian method for the assignment problem.
 \bibitem[Lee and Waslander(2024)]{lee2024}
 Lee, C.W., \& Waslander, S.L. (2024).
 UncertaintyTrack: Exploiting detection and localization uncertainty in multi-object tracking.
-\textit{arXiv:2402.12303}.
+\textit{IEEE International Conference on Robotics and Automation (ICRA)}, 4946--4953. arXiv:2402.12303.
 
 \bibitem[Li et al.(2021)]{li2021}
 Li, X., Wang, W., Hu, X., Li, J., Tang, J., \& Yang, J. (2021).
 Generalized Focal Loss V2: Learning reliable localization quality estimation for dense object detection.
-\textit{IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}.
+\textit{IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 11627--11636.
 
 \bibitem[Luiten et al.(2021)]{luiten2021}
 Luiten, J., O\v{s}ep, A., Dendorfer, P., Torr, P., Geiger, A., Leal-Taix\'e, L., \& Leibe, B. (2021).
@@ -802,7 +802,7 @@ HOTA: A higher order metric for evaluating multi-object tracking.
 \bibitem[Meng et al.(2023)]{meng2023}
 Meng, T., Fu, C., Huang, M., Wang, X., He, J., Huang, T., \& Shi, W. (2023).
 Localization-Guided Track: A deep association multi-object tracking framework based on localization confidence of detections.
-\textit{arXiv:2309.09765}.
+\textit{IEEE Sensors Journal}, 25, 5282--5293 (2025). 본 연구가 읽은 판본은 arXiv:2309.09765 (2023)이다.
 
 \bibitem[Milan et al.(2016)]{milan2016}
 Milan, A., Leal-Taix\'e, L., Reid, I., Roth, S., \& Schindler, K. (2016).
@@ -812,7 +812,7 @@ MOT16: A benchmark for multi-object tracking.
 \bibitem[Solano-Carrillo et al.(2024)]{solano2024}
 Solano-Carrillo, E., Sattler, F., Alex, A., Klein, A., Costa, B.P., Rodriguez, A.B., \& Stoppe, J. (2024).
 UTrack: Multi-object tracking with uncertain detections.
-\textit{European Conference on Computer Vision Workshops (ECCVW), Uncertainty Quantification for Computer Vision}. \textit{arXiv:2408.17098}.
+\textit{European Conference on Computer Vision Workshops (ECCVW), Uncertainty Quantification for Computer Vision}. Lecture Notes in Computer Science, 219--236. arXiv:2408.17098.
 
 \bibitem[Wang et al.(2021)]{wang2021}
 Wang, J., Xu, C., Yang, W., \& Yu, L. (2021).
@@ -827,12 +827,12 @@ Simple online and realtime tracking with a deep association metric.
 \bibitem[Yi et al.(2024)]{yi2024}
 Yi, K., Luo, K., Luo, X., Huang, J., Wu, H., Hu, R., \& Hao, W. (2024).
 UCMCTrack: Multi-object tracking with uniform camera motion compensation.
-\textit{AAAI Conference on Artificial Intelligence}.
+\textit{AAAI Conference on Artificial Intelligence}, 38, 6702--6710.
 
 \bibitem[Zhang et al.(2022)]{zhang2022}
 Zhang, Y., Sun, P., Jiang, Y., Yu, D., Weng, F., Yuan, Z., Luo, P., Liu, W., \& Wang, X. (2022).
 ByteTrack: Multi-object tracking by associating every detection box.
-\textit{European Conference on Computer Vision (ECCV)}.
+\textit{European Conference on Computer Vision (ECCV)}. Lecture Notes in Computer Science, 1--21.
 
 \end{thebibliography}
 
