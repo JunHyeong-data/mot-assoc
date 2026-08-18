@@ -124,7 +124,7 @@
 ``When two tracks compete for the same detection, the Mahalanobis distance favors larger uncertainty $\ldots$ This is an undesired behavior as it can lead to increased track fragmentations and unstable tracks.''\citep{wojke2017}
 \end{quote}
 
-이는 본 연구가 \textbf{공분산 역설}이라 부르는 현상 --- 불확실성이 클수록 마할라노비스 거리가 작아져 오히려 선호되는 구조 --- 을 정확히 지적한 것이다. DeepSORT는 이를 비용 함수를 수정하는 대신 트랙 나이 순서의 캐스케이드로 우회하였고, 이후 이 문제를 정면으로 다시 연 연구는 찾기 어렵다.
+이는 본 연구가 \textbf{공분산 역설}이라 부르는 현상 --- 불확실성이 클수록 마할라노비스 거리가 작아져 오히려 선호되는 구조 --- 을 정확히 지적한 것이다. DeepSORT는 이를 비용 함수를 수정하는 대신 트랙 나이 순서의 캐스케이드로 \textbf{우회}하였다. 이후 UCMCTrack\citep{yi2024}이 거리에 로그 행렬식 항을 더해 이 편향을 \textbf{억제}하는 방법을 제시하였다(2.5절). 그러나 두 대응 모두 \textbf{불확실성을 무엇으로 재는가는 건드리지 않는다} --- 전자는 순서로 피해 가고, 후자는 벌점을 더할 뿐이다. \textbf{검출기가 산출한 불확실성이 연관에 쓸모가 있는지 자체를 통제된 조건에서 측정한 연구는 찾기 어렵다.}
 
 본 연구의 목적은 다음 세 가지이다.
 
