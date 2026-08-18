@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
-"""**논문의 그림.** 신호는 있는데 연관으로 안 옮겨간다.
+"""**논문의 그림.** 위치 신호가 연관으로는 거의 안 옮겨간다.
 
-## 무엇을 보이는가
+## 무엇을 보이는가 -- **NMS 를 재고 나서 바뀌었다 (2026-08-18)**
 
-원고의 한 문장을 한 장에 넣는다:
+예전 판은 DFL 만 있었고 오른쪽이 전부 0.5 아래여서 이렇게 적었다:
 
-> **σ 의 순위 정보는 검출에 대한 것이지 연관에 대한 것이 아니다.**
+> ~~*"σ 의 순위 정보는 검출에 대한 것이지 연관에 대한 것이 아니다."*~~
 
-  왼쪽  **위치 오차**   -- 시퀀스별 편상관. 0 위에 있다 (신호가 있다)
-  오른쪽 **연관 오류**   -- 시퀀스별 AUC.   0.5 아래에 있다 (정보가 없다)
+**NMS 소스를 재니 4/7 이 0.5 위다** (MOT17-04 는 0.897). 그림이 말하는
+것이 소스에 따라 갈린다:
 
-**같은 σ, 같은 시퀀스, 다른 종말점.** 두 판이 나란히 있어야 뜻이 산다.
+  왼쪽  **위치 오차**  두 소스 다 0 위. 신호가 있다 (NMS +0.322 > DFL +0.151)
+  오른쪽 **연관 오류**  **DFL 은 7/7 이 0.5 아래, NMS 는 3/7 뿐이다**
+
+**같은 σ, 같은 시퀀스, 다른 평가 대상.** 두 판이 나란히 있어야 뜻이 산다.
+그리고 **오른쪽 판이 소스에 따라 갈린다는 것 자체가 결과다.**
 
 ## 자료 출처 (전부 재현 가능)
 
@@ -87,12 +91,13 @@ def main():
         y = [assoc[src]["per"][s + "-FRCNN"]["auc"] for s in SEQS]
         b.plot(x, y, "o-", color=CLR[src], ms=6, lw=1.6,
                label="%s  (overall %.3f)" % (NAME[src], assoc[src]["overall"]), zorder=3)
-    b.set_title("(b) Association error\n$\\sigma$ does not rank which match is wrong",
+    b.set_title("(b) Association error\nDFL: 0/7 above chance    NMS: 4/7",
                 fontsize=11)
     b.set_ylabel("AUC ( $\\sigma$ $\\rightarrow$ fixable association error )")
-    b.set_ylim(0.25, 0.72)
-    b.text(0.99, 0.56, "no information", transform=b.transAxes, fontsize=8,
-           color="0.35", ha="right")
+    b.set_ylim(0.25, 0.95)
+    # 0.5 파선 바로 위 **왼쪽**. 오른쪽은 시퀀스 13 의 두 점과 겹쳤다
+    b.text(0.015, 0.375, "chance", transform=b.transAxes, fontsize=8,
+           color="0.35", ha="left")
 
     for a_ in ax:
         a_.set_xticks(x)
@@ -104,8 +109,9 @@ def main():
         for sp in ("top", "right"):
             a_.spines[sp].set_visible(False)
 
-    fig.suptitle("Detection uncertainty carries a localization signal that does not "
-                 "reach association", fontsize=12, y=1.02)
+    fig.suptitle("The localization signal is clear in both sources; the association "
+                 "signal is absent (DFL) or weak and uneven (NMS)",
+                 fontsize=12, y=1.02)
     fig.tight_layout()
     OUT.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "pdf"):

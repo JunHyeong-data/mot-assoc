@@ -150,6 +150,13 @@ def main():
     hgt = np.array([r[2] for r in REC], float)
     sqs = np.array([r[3] for r in REC])
 
+    # **쌍별 기록을 그대로 저장한다** (2026-08-18 추가).
+    # NMS 소스에서 합친 AUC 와 시퀀스별이 갈려 원인을 따로 보려면 원자료가 필요하다.
+    # **판정 로직은 건드리지 않았다** -- 아래 [1]~[4] 는 그대로다.
+    _raw = Path("data/exp15"); _raw.mkdir(parents=True, exist_ok=True)
+    np.savez(_raw / ("pairs-%s.npz" % ("nms" if SRC == "w_nms" else "dfl")),
+             lab=lab, sig=sig, hgt=hgt, seq=sqs)
+
     print("=" * 92)
     print("[진단] get_dists 호출의 단계 구성 -- 감사에서 나온 정정")
     print("=" * 92)
