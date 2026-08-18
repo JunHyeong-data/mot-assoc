@@ -206,6 +206,17 @@ def main():
               % (s.replace("-FRCNN", ""), room, do, 100 * do / room,
                  dg, 100 * dg / room, gm[s]))
 
+    # 그림에 쓸 수 있게 저장한다. predictors.py 처럼 손으로 옮겨 적지 않는다.
+    import json
+    outd = Path("data/exp14"); outd.mkdir(parents=True, exist_ok=True)
+    (outd / "recovery.json").write_text(json.dumps(dict(
+        base_combined=hb, ocmc_combined=ho, gmc_combined=hg,
+        room=ROOM,
+        per={s: dict(base=pb[s], ocmc=po[s], gmc=pg[s],
+                     d_ocmc=po[s] - pb[s], d_gmc=pg[s] - pb[s],
+                     gmc_px=gm[s]) for s in SEQS}), indent=1))
+    print("  -> data/exp14/recovery.json")
+
     s13 = "MOT17-13-FRCNN"
     rec = 100 * (po[s13] - pb[s13]) / ROOM[s13]
     recg = 100 * (pg[s13] - pb[s13]) / ROOM[s13]
