@@ -19,6 +19,7 @@ from types import SimpleNamespace
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[0]))                       # experiments/
 sys.path.insert(0, str(HERE.parents[0] / "exp05_wasserstein"))
 sys.path.insert(0, str(HERE.parents[0] / "exp12_ceiling"))
 sys.path.insert(0, str(HERE.parents[1] / "external" / "UTrack"))
@@ -28,30 +29,39 @@ if hasattr(sys.stdout, "reconfigure"):
 from ultralytics.trackers.utils import matching                 # noqa: E402
 from replay import WTracker, Det, load, SEQS, BASE              # noqa: E402
 from run import det_gt_ids, gt_by_frame, GDet                   # noqa: E402
+from stage_util import which_stage, stage_thresh                # noqa: E402
 
 REC = []          # 채택된 쌍마다 한 줄
+CALLS = {}        # 단계별 get_dists 호출 수 (진단)
 
 
 class ProbeTracker(WTracker):
-    """1단계 채택 쌍을 라벨한다. 비용은 손대지 않는다 (기준선 그대로)."""
+    """**1단계** 채택 쌍을 라벨한다. 비용은 손대지 않는다 (기준선 그대로).
 
-    frame_gids = np.array([])          # 이 프레임 전체 검출의 GT id
+    감사 정정 (2026-08-18): `get_dists` 는 1단계와 3단계에서 **둘 다** 불린다.
+    `stage_util.which_stage` 로 갈라 **1단계만** 라벨한다. 3단계 건수도 세서
+    얼마나 섞여 있었는지 보고한다.
+    """
 
     def init_track(self, results, img=None):
         tracks = super().init_track(results, img)
         for t in tracks:
-            i = int(t.idx)
-            t.gt_id = int(results.gid[i])
-            t.sig = float(np.sqrt(max(results.sxx[i] + results.syy[i], 0.0)))
-            t.hgt = float(results.xyxy[i][3] - results.xyxy[i][1])
+            t.gt_id = int(results.gid[int(t.idx)])
         return tracks
 
     def get_dists(self, tracks, detections):
         d = super().get_dists(tracks, detections)
         if d.ndim != 2 or 0 in d.shape:
             return d
-        m, _, _ = matching.linear_assignment(d, self.args.match_thresh)
-        present = set(int(g) for g in self.frame_gids if g >= 0)
+        stage = which_stage(tracks)
+        CALLS[stage] = CALLS.get(stage, 0) + 1
+        if stage != 1:                       # 3단계는 사전 선언 범위 밖이다
+            return d
+        m, _, _ = matching.linear_assignment(d, stage_thresh(self.args, stage))
+        # **"고칠 수 있음" 은 그 단계가 실제로 본 검출로만 판단한다.**
+        # 예전에는 프레임 전체 검출로 봐서, 1단계가 볼 수 없는 저신뢰 검출까지
+        # "있었다" 로 세었다 (감사 지적).
+        present = set(int(de.gt_id) for de in detections if int(de.gt_id) >= 0)
         for i, j in np.asarray(m).reshape(-1, 2):
             tr, de = tracks[int(i)], detections[int(j)]
             tg, dg = getattr(tr, "gt_id", -1), int(de.gt_id)
@@ -116,7 +126,6 @@ def main():
         tr = ProbeTracker(SimpleNamespace(**BASE), "iou", 1.0, frame_rate=30)
         for f in range(1, c["n_frames"] + 1):
             m = c["frame"] == f
-            tr.frame_gids = gid[m]
             tr.update(GDet(c["xyxy"][m], c["conf"][m], np.zeros(int(m.sum())),
                            c["sxx"][m], c["syy"][m], gid[m]))
 
@@ -124,6 +133,19 @@ def main():
     sig = np.array([r[1] for r in REC], float)
     hgt = np.array([r[2] for r in REC], float)
 
+    print("=" * 92)
+    print("[진단] get_dists 호출의 단계 구성 -- 감사에서 나온 정정")
+    print("=" * 92)
+    tot = sum(CALLS.values())
+    for s in sorted(k for k in CALLS if k is not None):
+        print("  %d단계 %6d 회 (%.1f%%)%s"
+              % (s, CALLS[s], 100.0 * CALLS[s] / tot,
+                 "  <- 라벨에 쓴 것" if s == 1 else "  <- 사전 선언 범위 밖. 뺐다"))
+    if None in CALLS:
+        print("  판별불가(빈 목록) %d 회 -- 건너뛰었다" % CALLS[None])
+    print("  **예전 판은 이 둘을 섞어서 세었다.**")
+
+    print()
     print("=" * 92)
     print("[4] 채택된 1단계 쌍의 구성")
     print("=" * 92)

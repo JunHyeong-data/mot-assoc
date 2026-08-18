@@ -42,9 +42,11 @@ REJECT_IOU = 0.2          # ByteTrack: 이보다 작으면 매칭 거부
 PEDESTRIAN = 1
 
 # exp12 가 낸 시퀀스별 여지 (재현: python experiments/exp12_ceiling/run.py)
-ROOM = {"MOT17-02-FRCNN": 2.44, "MOT17-04-FRCNN": 1.44, "MOT17-05-FRCNN": 6.50,
-        "MOT17-09-FRCNN": 2.92, "MOT17-10-FRCNN": 6.42, "MOT17-11-FRCNN": 11.21,
-        "MOT17-13-FRCNN": 14.44}
+ROOM = {"MOT17-02-FRCNN": 2.02, "MOT17-04-FRCNN": 0.91, "MOT17-05-FRCNN": 4.86,
+        "MOT17-09-FRCNN": 2.75, "MOT17-10-FRCNN": 6.02, "MOT17-11-FRCNN": 8.87,
+        "MOT17-13-FRCNN": 12.17}
+# **정정 (2026-08-18 감사)**: 예전 값(2.44/1.44/6.50/2.92/6.42/11.21/14.44)은
+# exp12 신탁이 3단계까지 풀던 판이다. 1단계로 한정하니 위 값이 됐다.
 
 
 def seqinfo(seq, key):

@@ -33,9 +33,11 @@ OUT = Path("data/exp14/tracks")
 PEDESTRIAN = 1
 
 # exp12 가 낸 시퀀스별 여지 (천장 − 기준선)
-ROOM = {"MOT17-02-FRCNN": 2.44, "MOT17-04-FRCNN": 1.44, "MOT17-05-FRCNN": 6.50,
-        "MOT17-09-FRCNN": 2.92, "MOT17-10-FRCNN": 6.42, "MOT17-11-FRCNN": 11.21,
-        "MOT17-13-FRCNN": 14.44}
+ROOM = {"MOT17-02-FRCNN": 2.02, "MOT17-04-FRCNN": 0.91, "MOT17-05-FRCNN": 4.86,
+        "MOT17-09-FRCNN": 2.75, "MOT17-10-FRCNN": 6.02, "MOT17-11-FRCNN": 8.87,
+        "MOT17-13-FRCNN": 12.17}
+# **정정 (2026-08-18 감사)**: 예전 값(2.44/1.44/6.50/2.92/6.42/11.21/14.44)은
+# exp12 신탁이 3단계까지 풀던 판이다. 1단계로 한정하니 위 값이 됐다.
 STATIC = ("MOT17-02-FRCNN", "MOT17-04-FRCNN")     # exp13: 전역이동 0.00 px
 
 
@@ -220,8 +222,13 @@ def main():
         print("  30~60%% => 카메라 운동이 **큰 몫이지만 전부는 아니다**")
     else:
         print("  < 30%% => **exp13 의 진단이 틀렸다.** 이동은 컸지만 여지의 원인이 아니다")
-    if recg < rec / 2:
+    # 회복률이 음수면 "절반" 비교가 뜻이 없다. 양수일 때만 본다 (감사 정정).
+    if rec > 0 and recg < rec / 2:
         print("  실제 GMC 가 신탁의 절반도 못 낸다 -> **추정 정확도가 병목이다**")
+    elif abs(hg - ho) < 0.05:
+        print("  결합 HOTA 에서 실제 GMC 가 신탁과 사실상 같다 (%+.3f vs %+.3f)"
+              % (hg - hb, ho - hb))
+        print("  -> **추정 정확도는 병목이 아니다.** 평행이동 보상 자체의 한계다")
     return 0
 
 

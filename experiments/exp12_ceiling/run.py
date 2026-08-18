@@ -21,6 +21,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[0]))                       # experiments/
 sys.path.insert(0, str(HERE.parents[0] / "exp05_wasserstein"))
 sys.path.insert(0, str(HERE.parents[1] / "external" / "UTrack"))
 if hasattr(sys.stdout, "reconfigure"):
@@ -30,6 +31,7 @@ from replay import WTracker, Det, load, SEQS, BASE             # noqa: E402
 import evaluate as EV                                          # noqa: E402
 from tracker.eval.collections.hota import HOTA                 # noqa: E402
 from tracker.eval.collections.clear import CLEAR               # noqa: E402
+from stage_util import which_stage                             # noqa: E402
 
 OUT = Path("data/exp12/tracks")
 DIAG = {"gid_hit": 0, "gid_tot": 0, "rows": {}}
@@ -80,7 +82,12 @@ def det_gt_ids(cache, gt):
 
 
 class OracleTracker(WTracker):
-    """1단계 비용만 신탁으로 바꾼다. 나머지는 전부 그대로."""
+    """**1단계** 비용만 신탁으로 바꾼다. 나머지는 전부 그대로.
+
+    감사 정정 (2026-08-18): `get_dists` 는 3단계(unconfirmed)에서도 불린다.
+    사전 선언은 **1단계만** 이므로 `stage_util.which_stage` 로 갈라 3단계는
+    그대로 통과시킨다. 예전 판은 두 단계를 다 신탁으로 풀었다.
+    """
 
     def init_track(self, results, img=None):
         tracks = super().init_track(results, img)
@@ -91,6 +98,11 @@ class OracleTracker(WTracker):
     def get_dists(self, tracks, detections):
         base = super().get_dists(tracks, detections)
         if base.ndim != 2 or 0 in base.shape:
+            return base
+        stage = which_stage(tracks)
+        DIAG.setdefault("calls", {})
+        DIAG["calls"][stage] = DIAG["calls"].get(stage, 0) + 1
+        if stage != 1:                                 # 3단계는 손대지 않는다
             return base
         tg = np.array([getattr(t, "gt_id", -1) for t in tracks])[:, None]
         dg = np.array([getattr(d, "gt_id", -1) for d in detections])[None, :]

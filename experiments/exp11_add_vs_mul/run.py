@@ -21,12 +21,14 @@ from types import SimpleNamespace
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[0]))                       # experiments/
 sys.path.insert(0, str(HERE.parents[0] / "exp05_wasserstein"))
 sys.path.insert(0, str(HERE.parents[1] / "external" / "UTrack"))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from ultralytics.trackers.utils import matching                # noqa: E402
+from stage_util import which_stage, stage_thresh                # noqa: E402
 from replay import WTracker, Det, load, SEQS, BASE             # noqa: E402
 import evaluate as EV                                          # noqa: E402
 from tracker.eval.collections.hota import HOTA                 # noqa: E402
@@ -35,7 +37,9 @@ TARGET_DELTA = 0.20        # add 의 목표 평균 |Δcost| (사전 선언)
 MIN_CALLS = 1000
 OUT = Path("data/exp11/tracks")
 
-LOG = []                   # 연관 호출마다 한 줄
+LOG = []
+LOG_NOTE = None   # (LOG 는 연관 호출마다 한 줄)
+CALLS = {}        # 단계별 호출 수 (감사 정정)
 
 
 def unit(dets):
@@ -71,14 +75,25 @@ class E1Tracker(WTracker):
         if base.ndim != 2 or 0 in base.shape:
             return base
         M, N = base.shape
+        # 감사 정정 (2026-08-18): get_dists 는 1단계와 3단계에서 둘 다 불린다.
+        # 예전에는 3단계 호출에도 match_thresh(0.8)를 썼는데 실제는 0.7 이다.
+        stage = which_stage(tracks)
+        CALLS[stage] = CALLS.get(stage, 0) + 1
         u = unit(detections)
         add, mul = perturb(base, u)
-        th = self.args.match_thresh
+        th = stage_thresh(self.args, stage)
         p0, t0 = solve(base, th)
         p1, t1 = solve(add, th)
         p2, t2 = solve(mul, th)
+        # **동점 검사.** 쌍 집합이 달라도 base 비용 합이 같으면 최적성은 보존된다.
+        # 헝가리안은 동점에서 어느 최적해를 돌려줄지 정하지 않는다.
+        opt_ok = True
+        if p1 != p0:
+            c0 = sum(base[i, j] for i, j in p0)
+            c1 = sum(base[i, j] for i, j in p1)
+            opt_ok = abs(c0 - c1) < 1e-6
         LOG.append(dict(
-            M=M, N=N, le=(N <= M),
+            stage=stage, M=M, N=N, le=(N <= M), opt_ok=opt_ok,
             d_add=float(np.mean(np.abs(add - base))),
             d_mul=float(np.mean(np.abs(mul - base))),
             same_add=(p1 == p0), same_mul=(p2 == p0),
@@ -149,7 +164,14 @@ def main():
     print()
 
     replay(E1Tracker, "base")
-    L = LOG
+    # 감사 정정: 사전 선언 범위는 **1단계**다. 3단계 호출은 빼고 판정한다.
+    tot = sum(CALLS.values())
+    print("  [진단] get_dists 호출: " + ",  ".join(
+        "%s단계 %d (%.1f%%)" % (k, v, 100.0 * v / tot) for k, v in sorted(
+            CALLS.items(), key=lambda z: (z[0] is None, z[0]))))
+    print("         **예전 판은 둘을 섞어 세었고 3단계에도 0.8 을 썼다 (실제 0.7)**")
+    print()
+    L = [r for r in LOG if r["stage"] == 1]
     if not L:
         print("연관 호출이 없다")
         return 1
@@ -222,8 +244,23 @@ def main():
         else:
             print("  [3] 곱도 거의 안 바꾼다 (%.2f%%). 섭동이 약했을 수 있다" % e3)
     else:
-        print("  [1] 이 100%% 가 아니다 (%.4f%%). **명제나 구현이 틀렸다.**" % e1)
-        print("      원고 2절을 고쳐야 한다")
+        # **여기서 끝내면 안 된다.** 헝가리안은 동점에서 어느 최적해를 줄지
+        # 정하지 않는다. 쌍 집합이 달라도 base 비용 합이 같으면 명제(기여 0)는
+        # 살아 있다. 그걸 검사한 뒤에 판정한다 (감사 정정 2026-08-18).
+        bad = [r for r in le if not r["opt_ok"]]
+        n_diff = int(round(len(le) * (100.0 - e1) / 100.0))
+        print("  [1] 쌍 집합이 다른 호출 %d 건 (%.4f%% 일치)" % (n_diff, e1))
+        print("      그중 **최적성이 깨진 것 = %d 건**" % len(bad))
+        if not bad:
+            print("      => **전부 동점이다. 명제는 살아 있다** --")
+            print("         가산은 최적 할당의 *비용* 을 안 바꾼다. 솔버가 동점에서")
+            print("         다른 최적해를 골랐을 뿐이다")
+            if e3 < 99.0:
+                print("  [3] 곱은 %.2f%% 만 같다 -> **곱은 도달한다.**" % e3)
+                print("      => **설계 제약이 실데이터에서 확인된다.**")
+        else:
+            print("      => **최적성이 실제로 깨졌다. 명제나 구현이 틀렸다.**")
+            print("         원고 2절을 고쳐야 한다")
     if e4 > 0:
         print("  [4] 임계값 통로가 살아 있다 -- 할당은 같은데 채택이 %.2f%% 에서 다르다" % e4)
     else:
