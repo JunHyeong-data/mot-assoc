@@ -28,7 +28,9 @@ UA = "mot-assoc-refcheck (mailto:parkjune0310@gmail.com)"
 #   kuhn1955   Naval Research Logistics Quarterly 2(1-2):83-97 -- 맞다
 #   milan2016  MOT16 벤치마크. arXiv:1603.00831 전용 -- 맞다
 #   wang2021   NWD. arXiv:2110.13389 전용 -- 맞다
-KNOWN_MISS = {"kuhn1955", "milan2016", "wang2021"}
+#   somers2025 CAMELTrack. arXiv:2505.01257 전용 (2026-08-19 arXiv 로 확인:
+#              제목·저자 일치, 학회 게재 없음) -- Crossref 가 엉뚱한 것을 문다
+KNOWN_MISS = {"kuhn1955", "milan2016", "wang2021", "somers2025"}
 
 
 def crossref(title):
