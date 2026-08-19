@@ -160,7 +160,7 @@ def main():
     print()
 
     replay("base", None)
-    om = replay("ocmc", lambda s, n: gt_shifts(s))
+    replay("ocmc", lambda s, n: gt_shifts(s))
     print("영상에서 GMC 를 추정한다 (sparseOptFlow)...")
     gm = replay("gmc", gmc_shifts)
     hb, pb = score("base")

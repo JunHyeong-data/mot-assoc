@@ -39,7 +39,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import torch
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(errors='replace')

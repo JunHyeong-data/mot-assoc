@@ -31,7 +31,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from ultralytics.trackers.utils import matching                 # noqa: E402
-from replay import WTracker, Det, load, SEQS, BASE              # noqa: E402
+from replay import WTracker, load, SEQS, BASE                   # noqa: E402
 from run import det_gt_ids, gt_by_frame, GDet                   # noqa: E402
 from stage_util import which_stage, stage_thresh                # noqa: E402
 

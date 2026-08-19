@@ -33,7 +33,7 @@ fold 를 늘려도 소용없다 (실험 1g 에서 확인). 시퀀스별 HOTA 차
 """
 import json
 import sys
-from math import comb, sqrt
+from math import sqrt
 from pathlib import Path
 
 import numpy as np

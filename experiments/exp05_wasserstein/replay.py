@@ -211,7 +211,6 @@ def main():
     # C 보정 (함정 3): 기준선 비용의 중앙값에 맞춘다. 먼저 iou 로 목표를 잰다.
     print("C 보정용 기준선 비용 중앙값을 잰다...")
     probe = WTracker(SimpleNamespace(**BASE), "iou", 1.0)
-    med_costs = []
     c0 = load(SEQS[0], "iou")
     for f in range(1, min(c0["n_frames"], 60) + 1):
         m = c0["frame"] == f
