@@ -37,7 +37,7 @@ if var_boxes is not None:
 
 `s_x = sqrt(var_x + var_w/4)`, `s_y = sqrt(var_y + var_h/4)` — 실험 3 과 같은 양.
 
-| 갈래 | 검출기 | corr(s_x,w) | E[s_x] | E[w] | CV(s_x) | var=0 |
+| 조건 | 검출기 | corr(s_x,w) | E[s_x] | E[w] | CV(s_x) | var=0 |
 |---|---|---|---|---|---|---|
 | 우리 · 실험 1 설정 | yolov8m | +0.304 | 2.85 px | 73.9 | 1.671 | 10.4% |
 | 우리 · 포크 NMS 설정 | yolov8m | +0.429 | 1.59 px | 48.9 | 1.437 | 20.1% |

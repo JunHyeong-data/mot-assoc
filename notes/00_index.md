@@ -22,7 +22,7 @@
 | 10 | Localization-Guided Track (arXiv:2309.09765) | **정독 완료** | `primary_reading.md` 3절 |
 | 10b | Deep LG-Track (2504.01457) | **정독 완료** | `primary_reading.md` 8절 |
 
-**7~10 은 `uncertainty_related_work.md` 에서 "불확실성이 어느 통로로 할당에
+**7~10 은 `uncertainty_related_work.md` 에서 "불확실성이 어느 경로로 할당에
 도달하는가" 라는 네 번째 질문으로 함께 대조한다.** 그 표가 이 연구의 논지다.
 
 ---
