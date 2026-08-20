@@ -103,10 +103,40 @@ class WTracker(BYTETracker):
 
     def init_track(self, results, img=None):
         tracks = super().init_track(results, img)
+        if tracks and not WTracker._patched:
+            WTracker._patch_strack(type(tracks[0]))
         for t in tracks:
             i = int(t.idx)
             t.det_var = np.array([results.sxx[i], results.syy[i]], dtype=float)
         return tracks
+
+    # **트랙 sigma 를 매 연관마다 갱신한다 -- 참조 구현과 같은 자리에 건다.**
+    #
+    # `external/UTrack/tracker/update.py:124,165` 가 `re_activate` 와 `update`
+    # 양쪽에서 `self._var_xywh = new_track._var_xywh` 를 한다. exp03 은 그
+    # 프로퍼티를 읽었으므로 **신선한 sigma 로 돌았다.**
+    #
+    # 여기서는 `init_track` 에서만 붙이고 있어서 **100 프레임 산 트랙이 1 프레임
+    # 때 sigma 를 들고 있었다.** 양쪽 확장에서 트랙과 검출의 sigma 가 다른 시점
+    # 것이라 pad 가 어긋난다 -- 철회 17 의 det-only 와 같은 증상이다.
+    _patched = False
+
+    @classmethod
+    def _patch_strack(cls, STrack):
+        """STrack.update / re_activate 가 det_var 도 물려받게 한다."""
+        if cls._patched:
+            return
+        for name in ("update", "re_activate"):
+            orig = getattr(STrack, name)
+
+            def wrap(self, new_track, *a, _o=orig, **k):
+                r = _o(self, new_track, *a, **k)
+                dv = getattr(new_track, "det_var", None)
+                if dv is not None:
+                    self.det_var = np.array(dv, dtype=float)
+                return r
+            setattr(STrack, name, wrap)
+        cls._patched = True
 
     @staticmethod
     def _track_var(tracks):
