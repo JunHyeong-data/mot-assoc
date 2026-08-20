@@ -29,7 +29,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 SRC = Path("data/exp15")
-WITHIN = Path("data/exp21/withinrow.npz")     # exp18 이 남기면 쓴다
+WITHIN = Path("data/exp21")                    # exp18 이 소스별로 남긴다
 THRESH = 0.55                                  # 사전 등록한 AUC 판정선
 B = 2000
 SEED = 20260821
@@ -132,15 +132,21 @@ def main():
     print("-" * 92)
     print("[2] 여섯째 결과 -- 행 안 정답률. 0.5 를 넘어야 신호다")
     print("-" * 92)
-    if not WITHIN.exists():
-        print("  %s 가 없다. `python experiments/exp18_withinrow/paired.py --save` 를" % WITHIN)
-        print("  먼저 돌릴 것. **[2] 는 판정하지 않는다.**")
+    files = {"nms": WITHIN / "withinrow-nms.npz", "dfl": WITHIN / "withinrow-dfl.npz"}
+    if not all(f.exists() for f in files.values()):
+        print("  %s 가 없다. `python experiments/exp18_withinrow/paired.py -nms`" % WITHIN)
+        print("  와 `-dfl` 을 먼저 돌릴 것. **[2] 는 판정하지 않는다.**")
     else:
-        w = np.load(WITHIN, allow_pickle=True)
-        seq = w["seq"]
-        seqs = sorted(set(seq.tolist()))
-        for tag, name in (("sig", "검출기 sigma"), ("size", "박스 크기 sigma_C")):
-            a, b_ = (w[tag + "_wrong"].astype(float), w[tag + "_right"].astype(float))
+        # (라벨, 파일, 열 접두사) -- 박스 크기는 두 파일에 같으므로 dfl 것을 쓴다
+        jobs = [("검출기 sigma (NMS)", files["nms"], "sig"),
+                ("검출기 sigma (DFL)", files["dfl"], "sig"),
+                ("박스 크기 sigma_C", files["dfl"], "size")]
+        for name, fp, col in jobs:
+            w = np.load(fp, allow_pickle=True)
+            seq = w["seq"]
+            seqs = sorted(set(seq.tolist()))
+            a = w[col + "_wrong"].astype(float)
+            b_ = w[col + "_right"].astype(float)
             keep = a != b_                        # 동점 제외 (paired.py 규약)
             groups = {s: (a[keep & (seq == s)], b_[keep & (seq == s)]) for s in seqs}
             point = float((b_[keep] < a[keep]).mean())
@@ -156,7 +162,7 @@ def main():
 
             boot = cluster_boot(stat, groups, seqs, rng)
             print()
-            verdicts["w_" + tag] = report(name, per, boot, point, se_i, 0.5, "above")
+            verdicts["w_" + ("size" if col == "size" else name[-4:-1])] =                 report(name, per, boot, point, se_i, 0.5, "above")
 
     # ---------- 판정 ----------
     print()
