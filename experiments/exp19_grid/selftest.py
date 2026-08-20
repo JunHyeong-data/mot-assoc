@@ -57,26 +57,26 @@ def main():
     print()
     print("[0b] **방향 검사** -- 확장량을 올리면 채택률이 올라야 한다")
     print("     검출만 키우면 내려간다 (box_relax.py:60). 그게 철회 17 번이다.")
-    # **NMS 는 예외로 둔다 -- 결과이지 결함이 아니다.**
-    # 사전 등록한 예측 [P1]("트랙 sigma 를 갱신하면 NMS 가 양으로 돌아선다")이
-    # **반증됐다.** 갱신은 확실히 걸렸다 (20 프레임 이상 산 트랙 67/67 에서
-    # sigma 가 바뀌고, 118 회 관측 중 고유값 110 개). 그래도 NMS 만 내려간다.
-    # 원인은 노후가 아니라 **NMS sigma 의 프레임 간 변동성**이다 -- 한 트랙에서
-    # 0.046~0.312 로 7배 튄다. 트랙과 검출이 같은 프레임이어도 서로 다른
-    # 튀는 값이라 pad 가 어긋난다.
-    # 사전 등록의 읽는 법 그대로: **"NMS sigma 는 게이팅에 쓸 수 없다" 가 결과다.**
-    EXPECTED_DOWN = {"nms"}
+    # **입자성 문턱을 둔다.** 예전 판은 a=0 대 0.25 만 봤는데 NMS 의 그 차이가
+    # -0.00002 -- 채택 쌍 4.7만 건에서 **약 한 쌍**이다. 한 쌍으로 소스를
+    # 걸어내면 안 된다. 그리고 NMS 는 a=4 에서 오히려 기준선 위다.
+    # **단조 감소가 아니라 평평하다가 큰 a 에서 떨어진다.**
+    # 격자가 실제로 쓰는 크기(a=16 근처)에서 보고, 5 쌍 넘게 움직여야 실패로 친다.
+    GRAIN = 5.0 / 47194.0            # 채택 쌍 기준 5 쌍
     for src in ("size", "nms", "dfl"):
         r0 = accept(src, 0.0)
-        r1 = accept(src, 0.25)
-        up = r1 >= r0 - 1e-9
-        if src in EXPECTED_DOWN:
-            print("     %-5s  a=0 %.4f -> a=0.25 %.4f   ~ %s (사전 등록 [P1] 반증됨)"
-                  % (src, r0, r1, "오른다" if up else "**내려간다 -- 소스의 성질**"))
-            continue
-        ok &= up
-        print("     %-5s  a=0 %.4f -> a=0.25 %.4f   %s"
-              % (src, r0, r1, "OK (오른다)" if up else "!! **내려간다 -- 개입이 반대다**"))
+        rs = [(a, accept(src, a)) for a in (0.25, 4.0, 16.0)]
+        worst = min(r for _, r in rs)
+        drop = r0 - worst
+        up_any = any(r > r0 + GRAIN for _, r in rs)
+        fail = drop > GRAIN and not up_any
+        ok &= not fail
+        print("     %-5s  a=0 %.6f -> %s   %s"
+              % (src, r0, "  ".join("a=%g %.6f" % x for x in rs),
+                 "!! **어느 a 에서도 안 오른다 -- 개입이 반대다**" if fail
+                 else "OK (오르는 구간이 있다)"))
+        if drop > GRAIN and up_any:
+            print("           (큰 a 에서는 떨어진다 -- 입자성 아님. 기제는 미결)")
 
     # ---- [0c] 트랙 쪽 sigma 가 트랙마다 다른가 ----
     print()
