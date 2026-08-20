@@ -37,7 +37,7 @@ python experiments/figures/fig_signal_transfer.py && python experiments/figures/
 
 **`fig_source_channel.py` 는 더 이상 원고에 안 쓴다.** 7×5 격자에 글자를 채운
 것이라 **사실 표였고**, 35칸 중 20칸이 비어 지면의 절반이 흰 칸이었다.
-**표 2.1** 로 옮겼다 — 산출 방식으로 묶어 정렬하니 패턴이 세로로 읽힌다.
+**표 2.1** 로 옮겼다 — 추정 방식으로 묶어 정렬하니 패턴이 세로로 읽힌다.
 스크립트는 지우지 않는다 (CLAUDE.md 규칙 4).
 
 공통 서식은 `experiments/figures/style.py` 에 있다. 그림은 **지면 크기(6.2in)로
@@ -91,13 +91,15 @@ python paper/check_tex.py paper/report.tex && python paper/check_secref.py paper
 `check_numbers.py` 의 표에는 각 수치의 **출처 실험**이 적혀 있다.
 숫자가 바뀌면 그 실험을 다시 돌려 확인한다.
 
-### 절 참조는 `ef` 로 바꿨다
+### 절 참조는 `
+ef` 로 바꿨다
 
 처음에는 `"5.2절"` 처럼 숫자를 손으로 적었다. 절을 하나 끼우면 뒤 번호가 전부
 밀리는데 **아무도 안 알려준다.** 실제로 두 번 났다 — 6.4 신설 때 6곳, 7.2 신설 때 2곳.
 
 검사기로 잡는 것보다 **원인을 없애는 것**이 옳다고 판단해, 평문 참조 **67곳**을
-`ef{sec:장-절}` 로 바꾸고 각 절에 라벨을 달았다. 이제 LaTeX 이 번호를 매기므로
+`
+ef{sec:장-절}` 로 바꾸고 각 절에 라벨을 달았다. 이제 LaTeX 이 번호를 매기므로
 **이 부류의 버그가 생길 수 없다.** `check_secref.py` 는 그 상태를 지키는
 역행 방지 장치로 바뀌었다.
 

@@ -167,6 +167,15 @@ def main():
     print("[2] 기준 비교 -- 박스 크기로 같은 것")
     f_c = report("sigma_C (= h/2)", hw / 2.0, hr / 2.0)
 
+    # **실험 21 을 위해 짝을 남긴다.** 판정 로직은 손대지 않았다 --
+    # 군집(시퀀스) 부트스트랩으로 구간을 다시 내려면 시퀀스 라벨이 필요하다.
+    out = Path("data/exp21"); out.mkdir(parents=True, exist_ok=True)
+    np.savez(out / ("withinrow-%s.npz" % ("nms" if SRC == "w_nms" else "dfl")),
+             seq=sq, sig_wrong=sw, sig_right=sr,
+             size_wrong=hw / 2.0, size_right=hr / 2.0)
+    print("[저장] %s" % (out / ("withinrow-%s.npz"
+                               % ("nms" if SRC == "w_nms" else "dfl"))))
+
     print()
     print("[4] 시퀀스별")
     for s in SEQS:
