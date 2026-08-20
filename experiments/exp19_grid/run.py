@@ -355,23 +355,33 @@ def main():
 
     print()
     print("=" * 92)
-    print("판정 -- 자료 보기 전에 정한 읽는 법 (PREREG.md)")
+    print("판정 -- 자료 보기 전에 정한 읽는 법 (PREREG.md 보정 3)")
     print("=" * 92)
-    det = [grid[(c, s)][0] - h0 for c, _ in CHANNELS for s, _ in SOURCES
-           if s != "size" and grid[(c, s)]]
-    siz = [grid[(c, "size")][0] - h0 for c, _ in CHANNELS if grid[(c, "size")]]
-    if neg_all:
-        print("  **여섯 칸 모두 음수 => 교락이 해소된다.**")
-        print("  어느 소스를 어느 경로에 넣어도 진다. 한계 (1) 을 결과로 옮긴다.")
-    elif all(x < 0 for x in det) and all(x >= 0 for x in siz):
-        print("  **검출기 sigma 넉 칸만 음수 => 소스가 원인이다.**")
-        print("  실험 18(행 안 0.6451)과 같은 방향이다.")
-    else:
-        print("  뒤섞였다. **교락이 해소되지 않는다.** 한계 (1) 을 그대로 두고")
-        print("  무엇이 갈리는지 기술한다.")
+    # **NMS x 게이팅은 개입 불성립이라 판정에서 뺀다** (PREREG 보정 2·3).
+    # 확장이 문을 여는 방향으로 작동하지 않는 조건의 dHOTA 는 "졌다" 의
+    # 근거가 아니다. 유효한 **다섯 칸**으로 판정한다.
+    INVALID = {("gate", "nms")}
+    valid = {k: v for k, v in grid.items() if k not in INVALID and v}
+    vals = [v[0] - h0 for v in valid.values()]
+    print("  **NMS x 게이팅은 개입 불성립이라 제외한다.** 유효한 칸 %d개로 판정."
+          % len(vals))
     print()
-    print("  소스 간 차이(경로 안)와 경로 간 차이(소스 안)를 나란히 보라 --")
-    print("  전자가 크면 소스가 지배하고, 후자가 크면 경로가 지배한다.")
+    if all(x < 0 for x in vals):
+        print("  **다섯 칸 모두 음수 => 교락이 부분적으로 해소된다.**")
+        print("  각 경로 안에서 산출 방식을 갈랐고(거리 3종, 게이팅 2종) 전부 음수다.")
+        print("  **그러나 한계 (1) 을 승격하지 않는다** -- 사전 등록대로 고쳐 쓴다:")
+        print("     '격자를 채운 범위가 두 경로이고, 그중 게이팅은 두 산출 방식뿐이다'")
+    else:
+        pos = [k for k, v in valid.items() if v[0] - h0 >= 0]
+        print("  **양수인 칸이 있다: %s => 교락 미해소.**" % pos)
+        print("  한계 (1) 을 그대로 둔다.")
+    print()
+    print("  원고에 적을 문장 (사전 등록에 박아 둔 것):")
+    print("     'NMS 후보 분산 x 게이팅은 확장이 문을 여는 방향으로 작동하지")
+    print("      않아 측정이 성립하지 않았다. 따라서 이 조합에 대해서는 소스와")
+    print("      경로 중 무엇이 원인인지 말할 수 없다.'")
+    print()
+    print("  소스 간 차이(경로 안)와 경로 간 차이(소스 안)를 나란히 보라.")
     return 0
 
 
