@@ -216,7 +216,7 @@ from google.colab import drive; drive.mount('/content/drive')
 !grep -c RELAX_DUMP_CALLS /content/UTrack/tracker/box_relax.py
 ```
 
-마지막 줄이 **`3` 이상**이어야 한다. `0` 이면 옛 판이 복사된 것이고
+마지막 줄이 **`2`** 여야 한다. `0` 이면 옛 판이 복사된 것이고
 **그대로 돌리면 덤프가 안 나온다.**
 
 ## 보론 셀 2 — 원자료 남기기 (약 10분)
