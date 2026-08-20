@@ -90,6 +90,13 @@ class GridTracker(WTracker):
             w2 = w2_matrix_norm(t_box, d_box, t_var, d_var)
             dists = nwd_cost(w2, self.scale)
         else:                                   # gate -- 상자를 키우고 IoU
+            # **확장은 양쪽에 준다 (APPLY=both).** exp03 `box_relax.py:60` 이
+            # 경고를 적어 뒀는데 첫 판이 검출만 키웠다:
+            #   "검출만 키우면 이미 잘 맞는 쌍에서 IoU 가 오히려 떨어진다 --
+            #    트랙 상자가 커진 검출 안으로 들어가 교집합은 그대로인데
+            #    합집합만 커지기 때문이다."
+            # 그러면 확장이 문을 **여는** 게 아니라 **닫는** 개입이 된다.
+            # exp03 은 both 가 기본이고 run_colab.py:199 도 both 로 돌았다.
             sx = np.sqrt(np.maximum(d_var[:, 0], 0.0)) * self.scale
             sy = np.sqrt(np.maximum(d_var[:, 1], 0.0)) * self.scale
             w = np.maximum(d_box[:, 2] - d_box[:, 0], 1e-6)
@@ -98,7 +105,13 @@ class GridTracker(WTracker):
             big = d_box.copy()
             big[:, 0] -= sx; big[:, 2] += sx
             big[:, 1] -= sy; big[:, 3] += sy
-            dists = _iou_dist(t_box, big)
+            # 트랙 쪽은 **검출별 sigma 의 평균**으로 키운다 -- 트랙에는 검출별
+            # sigma 가 없으므로 exp03 과 같이 프레임 평균을 쓴다
+            tb = t_box.copy()
+            mx, my = float(np.mean(sx)), float(np.mean(sy))
+            tb[:, 0] -= mx; tb[:, 2] += mx
+            tb[:, 1] -= my; tb[:, 3] += my
+            dists = _iou_dist(tb, big)
 
         if self.args.fuse_score:
             dists = matching.fuse_score(dists, detections)
