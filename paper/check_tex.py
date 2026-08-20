@@ -42,6 +42,9 @@ print("ref 했으나 label 없음   :", sorted(ref - lab) or "없음")
 # 표/그림/식 라벨이 미참조면 그건 진짜 문제다.
 orphan = sorted(x for x in (lab - ref) if not x.startswith("sec:"))
 print("label 있으나 미참조     :", orphan or "없음", "(sec:* 제외)")
+# **판정에 반영한다.** 예전에는 찍기만 하고 통과시켰다 -- tab:withinrow 가
+# 인용 0회인 채로 "구조 검사 통과" 를 받았다. 표/그림이 미참조면 진짜 문제다.
+ok &= not orphan
 ok &= not (ref - lab)
 
 # 표 열 개수 -- LaTeX 에서 제일 흔한 컴파일 실패다
