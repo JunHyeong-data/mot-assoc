@@ -2555,3 +2555,62 @@ torch 2.11.0+cpu, CUDA 없음
 
 **판정은 안 바뀐다 — 여전히 미결이고 −4.33 도 88% 도 안 건드린다.**
 바뀌는 것은 **이유 한 줄**이다.
+
+## 관문이 잡았다 — **재생이 다른 IoU 를 쓰고 있었다** (2026-08-20)
+
+Colab 에서 추적 7 개를 다 돌리고 덤프(7,314 호출)를 얻은 뒤, 재생 단계에서
+관문이 걸렸다:
+
+```
+[관문] cython IoU 대 numpy IoU  max|diff| = 2.632e-02  !! 어긋난다 -- 멈춘다
+```
+
+**부동소수점 잡음이 아니라 다른 함수다.** UTrack 의 `ious` 는
+`fuzzy_cython_bbox.bbox_overlaps` 이고 Faster R-CNN 계열의 **+1 픽셀 규약**을
+쓴다. 재현해 보니 전형적 보행자 상자에서 `max|diff| = 2.0e-02` — 같은 크기다.
+
+### 원인은 **조용한 대체**다
+
+`box_relax.py` 의 `_get_ious()`:
+
+```python
+try:
+    from .matching import ious      # 패키지 안 -> cython (+1 규약)
+except (ImportError, ValueError):
+    return _numpy_ious              # 패키지 밖 -> numpy (+1 없음)
+```
+
+**최상위로 임포트하면 말없이 다른 함수가 된다.** CLAUDE.md 가 적어 둔
+*"가로챈 뒤에도 변환이 남아 있는지 확인한다"* 의 자리다.
+
+### **곁가지가 더 크다 — exp03 의 자체 시험이 쓰는 경로가 본 실행과 다르다**
+
+`selftest.py` 의 `load()` 가 최상위로 임포트한다. 그러므로:
+
+- `[1] measure vs plain IoU  max|diff| = 0.000e+00` 은 **numpy 대 numpy** 였다.
+  본 실행이 쓰는 cython 경로는 **한 번도 시험된 적이 없다**
+- 오늘 돌린 합성 탐침 `[S]` 도 numpy IoU 위에서 돌았다
+
+`[S]` 의 방향 결론(양쪽 확장이 문을 연다)은 **같은 함수를 α 전체에 일관되게
+썼으므로** 그 자체로는 유효하다. 다만 **"합성이라 못 세운다" 는 이유 목록에
+여섯 번째가 아니라 일곱 번째가 붙는다 — IoU 함수마저 본 실행과 다르다.**
+
+### 고친 것
+
+- `direction.py` 가 `tracker.box_relax` 로 임포트한다 (패키지 안). 재생이
+  `mod._get_ious()` 를 쓰므로 **본 실행과 같은 IoU** 다
+- **관문을 값 비교에서 객체 동일성으로 바꿨다.** 값 비교는 *"얼마나 다르면
+  통과인가"* 라는 자유도를 남기는데 여기서 옳은 답은 **같은 함수** 하나뿐이다
+- `run_colab.py` 의 `stage_direction` 이 `UTRACK_ROOT`/`PYTHONPATH` 를 넘긴다
+  (안 넘긴 것이 내 버그였다)
+- 가짜 UTrack 패키지(+1 규약 `ious` 포함)로 **끝까지 돌려 확인**했다
+
+### 환경 문제 셋 (런북에 넣을 것)
+
+| 증상 | 원인 |
+|---|---|
+| `CUDA error: invalid device ordinal` | `track.py:126` 이 `args.yolo.device` 를 쓰는데 `track_ablation_17.yaml:11` 이 **`device: 1`** 이다. `--gpu_id` 는 무시된다 |
+| `UnpicklingError: Weights only load failed` | torch 2.6+ 가 `torch.load` 기본값을 `weights_only=True` 로 바꿨는데 ultralytics 포크가 인자를 안 넘긴다 |
+| HF 다운로드 429 | 익명 + Xet 저장소. `hf_xet` 제거 + 재시작 + 시퀀스별로 나눠 받기 |
+
+**아직 판정은 안 나왔다.** 덤프는 남아 있으므로 재생만 다시 돌리면 된다.

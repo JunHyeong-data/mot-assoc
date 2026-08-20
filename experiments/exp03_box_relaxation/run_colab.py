@@ -319,7 +319,14 @@ def stage_direction(p, a):
     finally:
         restore_ann(p)
     here = Path(__file__).resolve().parent
-    sh([sys.executable, str(here / 'direction.py'), str(dumps)], cwd=here)
+    # **UTrack 을 경로에 넣어 넘긴다.** 안 넘기면 direction.py 가
+    # box_relax 를 최상위로 임포트해 IoU 가 numpy 대체본으로 조용히
+    # 떨어진다 (+1 픽셀 규약 차이로 2e-02 어긋남). 관문이 잡았다.
+    env = dict(os.environ)
+    env['UTRACK_ROOT'] = str(p.utrack)
+    env['PYTHONPATH'] = str(p.utrack) + os.pathsep + env.get('PYTHONPATH', '')
+    sh([sys.executable, str(here / 'direction.py'), str(dumps)],
+       cwd=here, env=env)
 
 
 def main():

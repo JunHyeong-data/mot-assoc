@@ -45,6 +45,9 @@ if hasattr(sys.stdout, "reconfigure"):
     # 거기가 cp949 면 한글이 깨져 무슨 관문에 걸렸는지 못 읽는다.
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(HERE))
+UTRACK = os.environ.get("UTRACK_ROOT") or "/content/UTrack"
+if os.path.isdir(UTRACK):
+    sys.path.insert(0, UTRACK)
 
 ALPHAS = [0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0]
 USED = (10.0, 20.0, 40.0)          # 본 실행이 쓴 구간
@@ -62,8 +65,14 @@ def load_relax(alpha, apply_to="both", cap=1.0):
     os.environ["RELAX_ALPHA"] = str(alpha)
     os.environ["RELAX_APPLY"] = apply_to
     os.environ["RELAX_CAP"] = str(cap)
-    sys.modules.pop("box_relax", None)
-    return importlib.import_module("box_relax")
+    # **UTrack 패키지 안의 사본을 임포트한다.** 최상위로 임포트하면
+    # `_get_ious` 의 `from .matching import ious` 가 ImportError 로 떨어져
+    # **조용히 `_numpy_ious` 로 대체된다.** 그런데 두 함수는 값이 다르다 --
+    # cython `bbox_overlaps` 는 Faster R-CNN 계열의 **+1 픽셀 규약**을 쓴다
+    # (관문이 max|diff| = 2.6e-02 로 잡았다. 잡음이 아니라 다른 함수다).
+    # 본 실행은 패키지 안에서 돌았으므로 재생도 그래야 한다.
+    sys.modules.pop("tracker.box_relax", None)
+    return importlib.import_module("tracker.box_relax")
 
 
 def _utrack_bits():
@@ -87,6 +96,7 @@ def _utrack_bits():
 
 def accepted(mod, calls, fuse_score, linear_assignment):
     """이 α 에서 채택된 쌍의 집합과 pad 비대칭을 낸다."""
+    _iou_fn = mod._get_ious()          # 본 실행과 **같은** IoU
     acc, asym = set(), []
     for ci, (t_tlbr, t_var, d_tlbr, d_var, scores, thr, is_fuse) in enumerate(calls):
         if t_tlbr.shape[0] == 0 or d_tlbr.shape[0] == 0:
@@ -106,7 +116,7 @@ def accepted(mod, calls, fuse_score, linear_assignment):
             den = np.maximum(dpx[:m], 1e-9)
             asym.append(np.abs(tpx[:m] - dpx[:m]) / den)
 
-        cost = 1.0 - mod._numpy_ious(dt, dd)
+        cost = 1.0 - _iou_fn(dt, dd)
         if is_fuse:
             cost = fuse_score(cost, None, scores=np.repeat(
                 scores[None, :], cost.shape[0], axis=0))
@@ -117,36 +127,35 @@ def accepted(mod, calls, fuse_score, linear_assignment):
     return acc, a
 
 
-def gate_ious(mod, calls):
-    """**관문** -- 재생의 numpy IoU 가 UTrack 의 cython IoU 와 같은가.
+def gate_ious(mod):
+    """**관문** -- 재생이 본 실행과 **같은 IoU 함수**를 쓰는가.
 
-    재생은 `_numpy_ious` 를 쓴다 (`box_relax` 를 패키지 밖에서 임포트하므로
-    `_get_ious` 가 numpy 로 떨어진다). UTrack 본 실행은 cython 을 썼다.
-    **둘이 어긋나면 채택 집합이 갈리고 판정이 무의미하다.**
+    `box_relax._get_ious()` 는 패키지 안에서는 cython `bbox_overlaps` 를,
+    밖에서는 `_numpy_ious` 를 돌려준다. **그 대체가 조용하다.** 그리고 둘은
+    값이 다르다 -- cython 쪽은 Faster R-CNN 계열의 **+1 픽셀 규약**이라
+    전형적 보행자 상자에서 IoU 가 2e-02 쯤 어긋난다. 첫 판 관문이
+    `max|diff| = 2.632e-02` 로 이것을 잡았다.
 
-    cython 을 못 불러오면 **통과시키지 않는다** -- 대조할 기록이 없는 것은
-    검사를 안 한 것이다.
+    **값을 비교하지 않고 객체 동일성을 본다.** 값 비교는 "얼마나 다르면
+    통과인가" 라는 자유도를 남기는데, 여기서 옳은 답은 **같은 함수** 하나뿐이다.
     """
     try:
         from tracker.matching import ious as cy_ious
     except Exception as e:
-        print("  !! UTrack 의 cython IoU 를 못 불러왔다 (%s)." % type(e).__name__)
-        print("     **대조 없이 통과시키지 않는다.** UTrack 안에서 돌릴 것.")
+        print("  !! UTrack 의 tracker.matching 을 못 불러왔다 (%s)."
+              % type(e).__name__)
+        print("     **대조 없이 통과시키지 않는다.** UTRACK_ROOT 를 주거나")
+        print("     PYTHONPATH 에 /content/UTrack 을 넣을 것.")
         return False
-    worst = 0.0
-    n = 0
-    for t_tlbr, _tv, d_tlbr, _dv, _s, _thr, _f in calls:
-        if t_tlbr.shape[0] == 0 or d_tlbr.shape[0] == 0:
-            continue
-        a = np.asarray(cy_ious(t_tlbr, d_tlbr), dtype=float)
-        b = mod._numpy_ious(t_tlbr, d_tlbr)
-        worst = max(worst, float(np.abs(a - b).max()))
-        n += 1
-        if n >= 200:                      # 200 호출이면 충분하다
-            break
-    ok = worst < 1e-9
-    print("  [관문] cython IoU 대 numpy IoU  max|diff| = %.3e  (%d 호출)  %s"
-          % (worst, n, "OK" if ok else "!! **어긋난다 -- 멈춘다**"))
+    fn = mod._get_ious()
+    ok = (fn is cy_ious)
+    print("  [관문] 재생의 IoU 가 본 실행의 것인가: %s"
+          % ("OK (cython bbox_overlaps)" if ok
+             else "!! **numpy 대체본이다 -- 멈춘다**"))
+    if not ok:
+        print("     box_relax 를 최상위로 임포트해 `from .matching import ious`")
+        print("     가 떨어졌다. `tracker.box_relax` 로 임포트해야 한다.")
+        print("     (두 함수는 +1 픽셀 규약 때문에 IoU 가 2e-02 쯤 다르다.)")
     return ok
 
 
@@ -167,7 +176,7 @@ def main(dump_dir):
     print("=" * 84)
     print("시퀀스 %d 개, 연관 호출 %d 회" % (len(dumps), len(calls)))
     print()
-    if not gate_ious(load_relax(0.0), calls):
+    if not gate_ious(load_relax(0.0)):
         print()
         print("  **판정하지 않는다** (CLAUDE.md 규칙 2 -- 어긋난 절차로 앞서 가지 않는다).")
         return 1
