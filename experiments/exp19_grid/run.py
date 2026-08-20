@@ -69,7 +69,8 @@ class GridTracker(WTracker):
         self.channel = channel
         self.source = source
         self.scale = scale
-        self.pad_area = []          # 게이팅 확장 면적 (통제용)
+        self.pad_area = []          # 게이팅 확장 면적 (검출+트랙)
+        self.pad_lin = []           # (선형 확장량 합, 개수) -- 양쪽
 
     def _dvar(self, detections, d_box):
         if self.source == "size":
@@ -90,27 +91,45 @@ class GridTracker(WTracker):
             w2 = w2_matrix_norm(t_box, d_box, t_var, d_var)
             dists = nwd_cost(w2, self.scale)
         else:                                   # gate -- 상자를 키우고 IoU
-            # **확장은 양쪽에 준다 (APPLY=both).** exp03 `box_relax.py:60` 이
-            # 경고를 적어 뒀는데 첫 판이 검출만 키웠다:
-            #   "검출만 키우면 이미 잘 맞는 쌍에서 IoU 가 오히려 떨어진다 --
-            #    트랙 상자가 커진 검출 안으로 들어가 교집합은 그대로인데
-            #    합집합만 커지기 때문이다."
-            # 그러면 확장이 문을 **여는** 게 아니라 **닫는** 개입이 된다.
-            # exp03 은 both 가 기본이고 run_colab.py:199 도 both 로 돌았다.
+            # **확장은 양쪽에 준다 (exp03 의 APPLY=both).** `box_relax.py:60` 이
+            # 경고를 적어 뒀는데 첫 판이 검출만 키웠다 -- 검출만 키우면 트랙
+            # 상자가 커진 검출 안으로 들어가 교집합은 그대로인데 합집합만 커져
+            # **이미 잘 맞는 쌍의 IoU 가 떨어진다.** 문을 여는 게 아니라 닫는다.
+            #
+            # **트랙 쪽 sigma 는 검출 쪽과 *같은 규칙* 을 트랙에 적용해 얻는다**
+            # (exp03 `box_relax.py:349` 의 `_var_of(tracks)` 와 같은 발상):
+            #   크기 소스     -> size_var(t_box)   트랙 상자의 w,h. 트랙마다
+            #   검출기 sigma  -> t.det_var         트랙을 만든 검출에서 물려받음
+            # **프레임 평균을 쓰면 안 된다** -- 크기 신호를 정의하는 상자별
+            # 정보를 트랙 쪽에서 지우는 셈이고, 크기 조건은 대조군의 앵커다.
+            t_var_g = (size_var(t_box) if self.source == "size"
+                       else np.asarray([getattr(t, "det_var", np.zeros(2))
+                                        for t in tracks], float).reshape(-1, 2))
             sx = np.sqrt(np.maximum(d_var[:, 0], 0.0)) * self.scale
             sy = np.sqrt(np.maximum(d_var[:, 1], 0.0)) * self.scale
+            tx = np.sqrt(np.maximum(t_var_g[:, 0], 0.0)) * self.scale
+            ty = np.sqrt(np.maximum(t_var_g[:, 1], 0.0)) * self.scale
+
+            # **확장량은 양쪽을 다 센다.** `box_relax.py:124` 가 2026-08-17 에
+            # 열어 둔 항목이다 -- "검출 쪽 표본으로만 상수를 푸는데 both 라
+            # pad 는 트랙에도 붙는다. 그러면 갈래들이 확장량 일치가 아니게 된다."
             w = np.maximum(d_box[:, 2] - d_box[:, 0], 1e-6)
             h = np.maximum(d_box[:, 3] - d_box[:, 1], 1e-6)
-            self.pad_area.append(float(np.sum((w + 2 * sx) * (h + 2 * sy) - w * h)))
+            tw = np.maximum(t_box[:, 2] - t_box[:, 0], 1e-6)
+            th = np.maximum(t_box[:, 3] - t_box[:, 1], 1e-6)
+            self.pad_area.append(
+                float(np.sum((w + 2 * sx) * (h + 2 * sy) - w * h))
+                + float(np.sum((tw + 2 * tx) * (th + 2 * ty) - tw * th)))
+            self.pad_lin.append((float(np.sum(sx) + np.sum(sy) + np.sum(tx)
+                                       + np.sum(ty)),
+                                 float(sx.size + sy.size + tx.size + ty.size)))
+
             big = d_box.copy()
             big[:, 0] -= sx; big[:, 2] += sx
             big[:, 1] -= sy; big[:, 3] += sy
-            # 트랙 쪽은 **검출별 sigma 의 평균**으로 키운다 -- 트랙에는 검출별
-            # sigma 가 없으므로 exp03 과 같이 프레임 평균을 쓴다
             tb = t_box.copy()
-            mx, my = float(np.mean(sx)), float(np.mean(sy))
-            tb[:, 0] -= mx; tb[:, 2] += mx
-            tb[:, 1] -= my; tb[:, 3] += my
+            tb[:, 0] -= tx; tb[:, 2] += tx
+            tb[:, 1] -= ty; tb[:, 3] += ty
             dists = _iou_dist(tb, big)
 
         if self.args.fuse_score:
