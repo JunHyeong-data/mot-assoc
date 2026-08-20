@@ -76,15 +76,21 @@ def measure(source, alpha):
 
 
 def solve(source, which, target, hi=4000.0, iters=18):
-    """이분 탐색. which 는 0=선형, 1=면적, 2=채택률."""
+    """이분 탐색. which 는 0=선형, 1=면적, 2=채택률.
+
+    **방향을 자동으로 잡는다.** 예전 판은 "v 가 alpha 에 증가한다" 를 가정했는데
+    **채택률은 감소한다** (상자를 키우면 트랙 예측 상자와 크기가 안 맞아 IoU 가
+    나빠진다). 그래서 첫 판이 상한으로 달아나 포화했다 -- 사전 등록 가드가 잡았다.
+    """
     lo = hi * 1e-5
+    inc = measure(source, hi)[which] > measure(source, lo)[which]
     best = (None, None)
     for _ in range(iters):
         mid = 0.5 * (lo + hi)
         v = measure(source, mid)[which]
         if best[0] is None or abs(v - target) < abs(best[1] - target):
             best = (mid, v)
-        if v > target:
+        if (v > target) == inc:
             hi = mid
         else:
             lo = mid
