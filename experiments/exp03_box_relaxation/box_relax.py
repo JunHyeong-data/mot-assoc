@@ -220,6 +220,37 @@ def _dump_stats():
 atexit.register(_dump_stats)
 
 
+# ---- 방향 검사용 원자료 기록 (PREREG-direction.md, 2026-08-20) ------------
+# **기본은 꺼져 있고 비용 경로를 건드리지 않는다.** RELAX_DUMP_CALLS 에 경로를
+# 주면 연관 호출마다 *확장 전* 입력을 남긴다. 판정 로직은 손대지 않았다.
+#
+# 왜 필요한가: 본 실행은 alpha=10 인데 방향을 검증한 [3b] 는 alpha=2, 합성
+# 장면이다. **검증한 구간과 사용한 구간이 5 배 떨어져 있다.** 같은 입력에
+# alpha 만 갈아끼워 채택 쌍이 늘어나는지 줄어드는지를 봐야 한다.
+DUMP_CALLS = os.environ.get('RELAX_DUMP_CALLS') or ''
+DUMP_MAX = int(_env_f('RELAX_DUMP_MAX', 0))      # 0 이면 무제한
+_calls = []
+
+
+def _dump_calls():
+    if not DUMP_CALLS or not _calls:
+        return
+    import pickle
+    parent = os.path.dirname(os.path.abspath(DUMP_CALLS))
+    if parent and not os.path.isdir(parent):
+        os.makedirs(parent, exist_ok=True)
+    tmp = DUMP_CALLS + '.tmp'
+    with open(tmp, 'wb') as f:
+        pickle.dump({'calls': _calls,
+                     'meta': {'mode': MODE, 'apply': APPLY, 'cap': CAP,
+                              'alpha': ALPHA}}, f, protocol=4)
+    os.replace(tmp, DUMP_CALLS)
+    print('[relax] calls -> %s (n=%d)' % (DUMP_CALLS, len(_calls)))
+
+
+atexit.register(_dump_calls)
+
+
 def _edge_sigma(var_xywh):
     """xywh 분산 -> 상자 모서리의 표준편차 (s_x, s_y)."""
     v = np.asarray(var_xywh, dtype=float).reshape(-1, 4)
@@ -339,6 +370,17 @@ def relaxed_iou_distance(tracks, detections, args=None,
 
     t_tlbr = _tlbr_of(tracks)
     d_tlbr = _tlbr_of(detections)
+
+    # **확장 전** 입력을 남긴다 (기본 꺼짐). copy 는 보험이다 -- 이 저장소는
+    # 제자리 변경으로 두 번 데였다 (NMS in-place, letterbox).
+    if DUMP_CALLS and (DUMP_MAX <= 0 or len(_calls) < DUMP_MAX):
+        _calls.append((
+            t_tlbr.copy(), _var_of(tracks).copy(),
+            d_tlbr.copy(), _var_of(detections).copy(),
+            np.asarray([getattr(d, 'score', 1.0) for d in detections],
+                       dtype=float),
+            (float(match_thresh) if match_thresh is not None else -1.0),
+            bool(is_fuse)))
 
     if d_tlbr.shape[0] > 0:
         dsx, dsy, n_zero = _edge_sigma(_var_of(detections))
