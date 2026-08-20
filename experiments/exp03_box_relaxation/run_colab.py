@@ -297,16 +297,43 @@ def stage_table(p, a):
     print('R > K2 이면 짝 일관성부터 의심할 것.')
 
 
+def stage_direction(p, a):
+    """**확장이 문을 여는가 닫는가** -- 연관 호출의 원자료를 남긴다.
+
+    사전 등록은 `PREREG-direction.md`. 본 실행의 alpha 는 10 인데 방향을
+    검증한 `[3b]` 는 alpha=2 의 합성 장면이다. **검증한 구간과 사용한
+    구간이 5 배 떨어져 있다.**
+
+    확장 0 (measure) 으로 한 번 돌며 호출마다 확장 전 입력을 남기고,
+    `direction.py` 가 그 같은 입력에 alpha 만 갈아끼워 재생한다.
+    """
+    dumps = Path(a.dumps)
+    dumps.mkdir(parents=True, exist_ok=True)
+    backup_ann(p)
+    try:
+        for seq in SEQS:
+            run_one(p, 'A_direction', 'relax_botsort', seq,
+                    {'RELAX_MODE': 'measure', 'RELAX_APPLY': 'both',
+                     'RELAX_CAP': str(a.cap),
+                     'RELAX_DUMP_CALLS': str(dumps / (seq + '.pkl'))}, a.gpu)
+    finally:
+        restore_ann(p)
+    here = Path(__file__).resolve().parent
+    sh([sys.executable, str(here / 'direction.py'), str(dumps)], cwd=here)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('stage', choices=['measure', 'calibrate', 'arms',
-                                      'table', 'restore'])
+                                      'table', 'restore', 'direction'])
     ap.add_argument('--utrack', default='/content/UTrack')
     ap.add_argument('--data_root', default='/content/data/MOT17')
     ap.add_argument('--exp', default='ablation_17')
     ap.add_argument('--stats', default='/content/relax_stats')
     ap.add_argument('--gpu', type=int, default=0)
     ap.add_argument('--cap', type=float, default=1.0)
+    ap.add_argument('--dumps', default='/content/exp03_dumps',
+                    help='direction: 연관 호출 원자료를 남길 곳')
     ap.add_argument('--alphas', nargs='+', type=float, default=ALPHAS,
                     help='R 격자. 기본은 사전 선언 격자 %s' % ALPHAS)
     ap.add_argument('--alpha', type=float, default=2.0,
@@ -323,7 +350,8 @@ def main():
 
     {'measure': stage_measure, 'calibrate': stage_calibrate,
      'arms': stage_arms, 'table': stage_table,
-     'restore': lambda p, a: restore_ann(p)}[a.stage](p, a)
+     'restore': lambda p, a: restore_ann(p),
+     'direction': stage_direction}[a.stage](p, a)
 
 
 if __name__ == '__main__':
