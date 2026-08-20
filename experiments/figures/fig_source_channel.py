@@ -55,11 +55,15 @@ CELLS = {
     (1, 3): ("ours $-1.01$", "-", True),
     # NWD 는 **검출용**이라 MOT 연관 결과가 아니다 -- 중립으로 칠한다.
     (2, 0): ("NWD (detection)\nours $-4.98$", "0", False),
-    (2, 3): ("ours $-8.90$\nloses to size by 3.92", "-", True),
+    (2, 3): ("ours $-8.90$\nloses to size by 3.93", "-", True),
     (3, 0): ("UCMCTrack\n$R=(\\sigma_m w,\\sigma_m h)$", "+", False),
     (3, 1): ("NSA Kalman\n$\\tilde R=(1-c)R$", "+", False),
     (3, 3): ("UTrack $-0.62$\nUncTrack $-0.1$", "-", False),
-    (4, 0): ("ours (control)\nbeats $\\sigma$ by 3.81", "0", True),
+    # **3.81 이라는 수치는 뺐다** -- 실험 20 이 맞춤 기준에 따라 -8.5 ~ +0.2 로
+    # 부호까지 갈리는 것을 보였다. 방향만 남긴다.
+    # **3.81 을 뺐다** -- 실험 20 이 맞춤 기준에 따라 -8.5 ~ +0.2 로
+    # 부호까지 갈리는 것을 보였다. 방향만 남긴다.
+    (4, 0): ("ours (control)\nbeats $\\sigma$\n(criterion-dep.)", "0", True),
     # **한 칸에 두 이야기가 있다.** UncTrack 의 +2.2 는 상자확장 전체의 이득이고,
     # 우리 -4.33 은 확장량을 맞췄을 때 sigma 로 정한 쪽이 크기로 정한 쪽보다
     # 얼마나 나쁜가다. **다른 양이므로 같은 색으로 칠하면 오해를 부른다.**
