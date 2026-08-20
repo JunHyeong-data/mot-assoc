@@ -38,9 +38,18 @@ DUMMY_VIDEO = {'id': 0, 'file_name': 'name'}
 ALPHAS = [0.5, 1.0, 2.0, 3.0, 5.0]
 
 
-def sh(cmd, cwd, env=None):
+def sh(cmd, cwd, env=None, check=True):
+    """자식 프로세스를 돌린다. **실패하면 멈춘다.**
+
+    예전에는 반환 코드를 안 봤다. 그래서 평가가 통째로 실패했는데도
+    다음 단계로 넘어가 **성공했는지 실패했는지조차 알 수 없는 출력**이
+    나왔다 (2026-08-20). CLAUDE.md -- "관문이 실패하면 판정하지 말고 멈춘다."
+    """
     print('$ ' + ' '.join(str(c) for c in cmd), flush=True)
     r = subprocess.run(cmd, cwd=cwd, env=env)
+    if check and r.returncode != 0:
+        sys.exit('ERROR 종료 코드 %d -- 멈춘다: %s'
+                 % (r.returncode, ' '.join(str(c) for c in cmd)[:120]))
     if r.returncode:
         sys.exit('FAILED (exit %d): %s' % (r.returncode, ' '.join(map(str, cmd))))
 
@@ -316,8 +325,16 @@ def stage_direction(p, a):
                     {'RELAX_MODE': 'measure', 'RELAX_APPLY': 'both',
                      'RELAX_CAP': str(a.cap),
                      'RELAX_DUMP_CALLS': str(dumps / (seq + '.pkl'))}, a.gpu)
+        # **관문**: 기록 훅이 추적을 안 건드렸는가. 시퀀스별 평가만으로는
+        # 결합 값이 안 나와서 64.494 를 확인할 수 없었다 (2026-08-20).
+        evaluate(p, 'A_direction')
     finally:
         restore_ann(p)
+    print('')
+    print('=' * 66)
+    print('관문: 위 COMBINED HOTA 가 exp03 갈래 A 의 64.494 와 같아야 한다.')
+    print('다르면 기록 훅이 추적을 바꾼 것이고 덤프가 다른 궤적에서 나온 것이다.')
+    print('=' * 66)
     here = Path(__file__).resolve().parent
     # **UTrack 을 경로에 넣어 넘긴다.** 안 넘기면 direction.py 가
     # box_relax 를 최상위로 임포트해 IoU 가 numpy 대체본으로 조용히
