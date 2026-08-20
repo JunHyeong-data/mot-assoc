@@ -41,6 +41,9 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    # **stderr 도 해야 한다.** sys.exit(메시지) 는 stderr 로 나가는데
+    # 거기가 cp949 면 한글이 깨져 무슨 관문에 걸렸는지 못 읽는다.
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(HERE))
 
 ALPHAS = [0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0]
@@ -64,8 +67,21 @@ def load_relax(alpha, apply_to="both", cap=1.0):
 
 
 def _utrack_bits():
-    """UTrack 의 fuse_score / linear_assignment 를 **그대로** 가져온다."""
-    from tracker.matching import fuse_score, linear_assignment
+    """UTrack 의 fuse_score / linear_assignment 를 **그대로** 가져온다.
+
+    재구현하지 않는다. 이 저장소는 전처리를 재구현했다가 HOTA 가 몇 점씩
+    틀린 전례가 있다 (CLAUDE.md). **없으면 대체하지 않고 멈춘다.**
+    """
+    try:
+        from tracker.matching import fuse_score, linear_assignment
+    except ImportError:
+        print("ERROR UTrack 의 tracker.matching 을 못 불러왔다.")
+        print("      이 스크립트는 **UTrack 안에서** 돌아야 한다 --")
+        print("        sys.path 에 /content/UTrack 이 있어야 하고")
+        print("        nms_var / fuzzy_cython_bbox 가 설치돼 있어야 한다.")
+        print("      **fuse_score 와 linear_assignment 를 재구현하지 않는다.**")
+        print("      재생이 본 실행과 다른 계산을 하면 판정이 무의미하다.")
+        sys.exit(2)
     return fuse_score, linear_assignment
 
 
@@ -101,6 +117,39 @@ def accepted(mod, calls, fuse_score, linear_assignment):
     return acc, a
 
 
+def gate_ious(mod, calls):
+    """**관문** -- 재생의 numpy IoU 가 UTrack 의 cython IoU 와 같은가.
+
+    재생은 `_numpy_ious` 를 쓴다 (`box_relax` 를 패키지 밖에서 임포트하므로
+    `_get_ious` 가 numpy 로 떨어진다). UTrack 본 실행은 cython 을 썼다.
+    **둘이 어긋나면 채택 집합이 갈리고 판정이 무의미하다.**
+
+    cython 을 못 불러오면 **통과시키지 않는다** -- 대조할 기록이 없는 것은
+    검사를 안 한 것이다.
+    """
+    try:
+        from tracker.matching import ious as cy_ious
+    except Exception as e:
+        print("  !! UTrack 의 cython IoU 를 못 불러왔다 (%s)." % type(e).__name__)
+        print("     **대조 없이 통과시키지 않는다.** UTrack 안에서 돌릴 것.")
+        return False
+    worst = 0.0
+    n = 0
+    for t_tlbr, _tv, d_tlbr, _dv, _s, _thr, _f in calls:
+        if t_tlbr.shape[0] == 0 or d_tlbr.shape[0] == 0:
+            continue
+        a = np.asarray(cy_ious(t_tlbr, d_tlbr), dtype=float)
+        b = mod._numpy_ious(t_tlbr, d_tlbr)
+        worst = max(worst, float(np.abs(a - b).max()))
+        n += 1
+        if n >= 200:                      # 200 호출이면 충분하다
+            break
+    ok = worst < 1e-9
+    print("  [관문] cython IoU 대 numpy IoU  max|diff| = %.3e  (%d 호출)  %s"
+          % (worst, n, "OK" if ok else "!! **어긋난다 -- 멈춘다**"))
+    return ok
+
+
 def main(dump_dir):
     dumps = sorted(Path(dump_dir).glob("*.pkl"))
     if not dumps:
@@ -117,6 +166,11 @@ def main(dump_dir):
     print("실험 3 보론 -- 확장이 문을 여는가 닫는가")
     print("=" * 84)
     print("시퀀스 %d 개, 연관 호출 %d 회" % (len(dumps), len(calls)))
+    print()
+    if not gate_ious(load_relax(0.0), calls):
+        print()
+        print("  **판정하지 않는다** (CLAUDE.md 규칙 2 -- 어긋난 절차로 앞서 가지 않는다).")
+        return 1
     print()
 
     base_set, base_asym = None, None
@@ -154,20 +208,20 @@ def main(dump_dir):
     print("=" * 84)
     print("  α=%g 에서 채택 쌍 변화 %+d 건 (문턱 %d 건)" % (PRIMARY, d, GRAIN))
     if d > GRAIN:
-        print("  => **개입 성립.** 확장이 문을 연다. -4.33 과 88%% 는 그대로 유효하다.")
+        print("  => **개입 성립.** 확장이 문을 연다. -4.33 과 88% 는 그대로 유효하다.")
     elif d < -GRAIN:
         print("  => **개입 불성립.** exp19 의 NMS x 게이팅과 같은 자리다.")
         print("     PREREG 「파급」표대로 고친다 -- tab:channels 게이팅 행,")
-        print("     '네 경로', 88%%, 그리고 **실험 20 전체**.")
+        print("     '네 경로', 88%, 그리고 **실험 20 전체**.")
     else:
         pct = 100.0 * sym1 / max(n0, 1)
         print("  => **중립.** 개수로 판정하지 않는다. 대칭차 %d 건 (채택의 %.2f%%)"
               % (sym1, pct))
         if pct < 1.0:
-            print("     대칭차 < 1%% => **개입이 사실상 돌지 않았다.** -4.33 은")
-            print("     확장이 아니라 다른 것에서 온다. 88%% 는 뜻을 잃는다.")
+            print("     대칭차 < 1% => **개입이 사실상 돌지 않았다.** -4.33 은")
+            print("     확장이 아니라 다른 것에서 온다. 88% 는 뜻을 잃는다.")
         else:
-            print("     대칭차 >= 1%% => **개입은 돌았고 방향이 중립이다.**")
+            print("     대칭차 >= 1% => **개입은 돌았고 방향이 중립이다.**")
             print("     -4.33 은 유효하되 '문을 여는 개입' 이라는 서술은 못 쓴다.")
     print()
     print("  **단조인가** -- 보정 1 의 (1) 이 '이 자료에서 단조' 라고 적었는데")
