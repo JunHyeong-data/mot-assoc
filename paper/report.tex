@@ -7,7 +7,9 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage[margin=1in, headheight=14.5pt]{geometry}
-\graphicspath{{figures/}{attachments/}}
+% 그림을 어디에 두든 찾게 한다. **루트(./)가 빠져 있어서** Overleaf 에
+% 평평하게 올렸을 때 fig_ceiling.pdf 를 못 찾고 컴파일이 죽었다 (2026-08-21).
+\graphicspath{{figures/}{./}{attachments/}{paper/figures/}}
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{longtable}

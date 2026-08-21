@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """report.tex 구조 검사. xelatex 이 없으니 컴파일 대신 이걸로 잡는다."""
 import io
+import os
 import re
 import sys
 import collections
@@ -75,10 +76,19 @@ for env in ("figure", "table"):
             print("%s 에 caption 없음" % env)
             ok = False
 
+
+# **LaTeX 와 같은 방식으로 찾는다.** 예전에는 저장소 루트만 봐서
+# `figures/` 가 있으면 통과시켰는데, LaTeX 는 .tex 가 있는 디렉터리
+# 기준이라 `paper/figures/` 가 비면 죽는다. 2026-08-21 에 실제로 죽었다.
+base = os.path.dirname(os.path.abspath(sys.argv[1])) or "."
+gp = re.findall(BS * 2 + r"graphicspath\{(.*?)\}\s*$", t, re.M)
+roots = re.findall(r"\{([^{}]*)\}", gp[0]) if gp else []
+roots = roots + [""]
 for f in re.findall(BS * 2 + r"includegraphics(?:\[[^\]]*\])?\{([^}]*)\}", t):
-    import os
-    print("그림 %-40s %s" % (f, "있음" if os.path.exists(f) else "!! 없음"))
-    ok &= os.path.exists(f)
+    cands = [os.path.join(base, r, f) for r in roots]
+    hit = next((c for c in cands if os.path.exists(c)), None)
+    ok &= hit is not None
+    print("그림 %-40s %s" % (f, "있음" if hit else "!! **없음 -- LaTeX 가 못 찾는다**"))
 
 if chr(11) in t or chr(12) in t:
     print("!! 제어문자가 들어 있다")
