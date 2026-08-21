@@ -80,6 +80,9 @@ for env in ("figure", "table"):
 # **LaTeX 와 같은 방식으로 찾는다.** 예전에는 저장소 루트만 봐서
 # `figures/` 가 있으면 통과시켰는데, LaTeX 는 .tex 가 있는 디렉터리
 # 기준이라 `paper/figures/` 가 비면 죽는다. 2026-08-21 에 실제로 죽었다.
+# 12pt A4, 여백 1in -> 본문 폭 210mm - 50.8mm = 159.2mm = 451.3pt.
+TEXT_PT = 451.3
+
 base = os.path.dirname(os.path.abspath(sys.argv[1])) or "."
 gp = re.findall(BS * 2 + r"graphicspath\{(.*?)\}\s*$", t, re.M)
 roots = re.findall(r"\{([^{}]*)\}", gp[0]) if gp else []
@@ -88,7 +91,21 @@ for f in re.findall(BS * 2 + r"includegraphics(?:\[[^\]]*\])?\{([^}]*)\}", t):
     cands = [os.path.join(base, r, f) for r in roots]
     hit = next((c for c in cands if os.path.exists(c)), None)
     ok &= hit is not None
-    print("그림 %-40s %s" % (f, "있음" if hit else "!! **없음 -- LaTeX 가 못 찾는다**"))
+    note = "있음" if hit else "!! **없음 -- LaTeX 가 못 찾는다**"
+    # **폭도 본다.** width 옵션을 안 주므로 PDF 의 MediaBox 가 곧 지면 위
+    # 크기다. 본문보다 넓으면 오른쪽이 잘리는데 **LaTeX 는 경고만 하고
+    # 죽지 않아** 컴파일해도 통과한 줄 안다. 2026-08-21 에 실제로 잘렸다.
+    if hit:
+        mb = re.search(rb"/MediaBox\s*\[\s*([\d.-]+)\s+([\d.-]+)"
+                       rb"\s+([\d.-]+)\s+([\d.-]+)", open(hit, "rb").read())
+        if mb:
+            w = float(mb.group(3)) - float(mb.group(1))
+            if w > TEXT_PT:
+                note = "!! **%.0fpt 넘침 (본문 %.0fpt) -- 오른쪽이 잘린다**" % (w, TEXT_PT)
+                ok = False
+            else:
+                note = "있음 %.0fpt / %.0f" % (w, TEXT_PT)
+    print("그림 %-40s %s" % (f, note))
 
 if chr(11) in t or chr(12) in t:
     print("!! 제어문자가 들어 있다")
