@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """실험 12 -- **연관 천장.** 이 벤치마크에 애초에 몇 점이 남아 있는가.
 
-사전 선언은 `PREREG.md` (커밋 `c633eee`, 자료보다 먼저).
+사전 등록은 `PREREG.md` (커밋 `c633eee`, 자료보다 먼저).
 
 검출을 고정하고 **1단계 연관만 정답으로** 푼다.
 
@@ -82,11 +82,11 @@ def det_gt_ids(cache, gt):
 
 
 class OracleTracker(WTracker):
-    """**1단계** 비용만 신탁으로 바꾼다. 나머지는 전부 그대로.
+    """**1단계** 비용만 오라클로 바꾼다. 나머지는 전부 그대로.
 
     감사 정정 (2026-08-18): `get_dists` 는 3단계(unconfirmed)에서도 불린다.
-    사전 선언은 **1단계만** 이므로 `stage_util.which_stage` 로 갈라 3단계는
-    그대로 통과시킨다. 예전 판은 두 단계를 다 신탁으로 풀었다.
+    사전 등록은 **1단계만** 이므로 `stage_util.which_stage` 로 갈라 3단계는
+    그대로 통과시킨다. 예전 판은 두 단계를 다 오라클로 풀었다.
     """
 
     def init_track(self, results, img=None):
@@ -172,7 +172,7 @@ def main():
     print("=" * 92)
     print("실험 12 -- 연관 천장. 이 벤치마크에 애초에 몇 점이 남아 있는가")
     print("=" * 92)
-    print("사전 선언 PREREG.md (커밋 c633eee, 자료보다 먼저)")
+    print("사전 등록 PREREG.md (커밋 c633eee, 자료보다 먼저)")
     print("검출을 고정하고 1단계 연관만 정답으로 푼다. **방법이 아니라 측정이다.**")
     print()
 
@@ -181,12 +181,12 @@ def main():
     b, o = score("base"), score("oracle")
 
     print("=" * 92)
-    print("사전 선언한 관문")
+    print("사전 등록한 사전 점검")
     print("=" * 92)
     ok = True
     g0a = o["HOTA"] >= b["HOTA"]
     ok &= g0a
-    print("  [0a] 신탁이 기준선보다 나쁘지 않다  %.3f vs %.3f  %s"
+    print("  [0a] 오라클이 기준선보다 나쁘지 않다  %.3f vs %.3f  %s"
           % (o["HOTA"], b["HOTA"], "OK" if g0a else "** 실패: 배관이 틀렸다 **"))
     g0b = o["AssA"] - b["AssA"] > 0
     ok &= g0b
@@ -195,21 +195,21 @@ def main():
     # [0c] 는 버렸다 -- PREREG-v2.md 참고. "캐시가 같으면 DetA 도 같다" 가 거짓이었다.
     g0c = o["IDSW"] < b["IDSW"]
     ok &= g0c
-    print("  [0c'] 신탁의 IDSW 가 더 적다        %.0f vs %.0f  %s"
-          % (o["IDSW"], b["IDSW"], "OK" if g0c else "** 실패: 신탁이 신탁이 아니다 **"))
+    print("  [0c'] 오라클의 IDSW 가 더 적다        %.0f vs %.0f  %s"
+          % (o["IDSW"], b["IDSW"], "OK" if g0c else "** 실패: 오라클이 오라클이 아니다 **"))
     cov = 100.0 * DIAG["gid_hit"] / max(DIAG["gid_tot"], 1)
     g0d = cov >= 50.0
     ok &= g0d
     print("  [0d]  GT id 가 붙은 검출 비율       %.1f%%  %s"
-          % (cov, "OK (>=50)" if g0d else "** 신탁이 약하다 **"))
+          % (cov, "OK (>=50)" if g0d else "** 오라클이 약하다 **"))
     if not ok:
         print()
-        print("  ** 관문 실패. 판정하지 않는다 **")
+        print("  ** 사전 점검 실패. 판정하지 않는다 **")
         return 1
 
     print()
     print("=" * 92)
-    print("사전 선언한 종말점")
+    print("사전 등록한 평가지표")
     print("=" * 92)
     print("%-22s %9s %9s %9s %9s" % ("", "HOTA", "DetA", "AssA", "IDSW"))
     print("-" * 92)
@@ -224,9 +224,9 @@ def main():
     print("  [진단] 출력 행 수 -- [0c] 를 버린 이유. **연관이 출력을 바꾼다**")
     tb = sum(v["base"] for v in DIAG["rows"].values())
     to = sum(v["oracle"] for v in DIAG["rows"].values())
-    print("      기준선 %d 행 -> 신탁 %d 행   %+d (%.1f%%)"
+    print("      기준선 %d 행 -> 오라클 %d 행   %+d (%.1f%%)"
           % (tb, to, to - tb, 100.0 * (to - tb) / max(tb, 1)))
-    print("      신탁은 GT id 가 다른 검출과의 매칭을 거부한다. 빠진 것 상당수가")
+    print("      오라클은 GT id 가 다른 검출과의 매칭을 거부한다. 빠진 것 상당수가")
     print("      거짓양성이라 DetA 가 오른다 -- 캐시가 같아도 정상이다")
 
     print()
@@ -242,7 +242,7 @@ def main():
     print("      %-34s %+8.2f" % ("**연관 천장 (딸 수 있는 전부)**", room))
     for name, v in (("칼만 R (exp02)", -0.62), ("게이팅 (exp03)", -4.33),
                     ("거리/와서스타인 (exp05)", -4.98), ("임계값 LOSO (exp06)", -0.21),
-                    ("임계값 신탁 상한 (exp06)", 0.892)):
+                    ("임계값 오라클 상한 (exp06)", 0.892)):
         print("      %-34s %+8.2f" % (name, v))
 
     print()
@@ -251,7 +251,7 @@ def main():
     print("=" * 92)
     if room < 3.0:
         print("  여지 %.2f < 3 => **이 벤치마크는 연관 포화다.**" % room)
-        print("     우리 음성 결과의 상당 부분이 '통로가 나쁘다' 가 아니라")
+        print("     우리 음성 결과의 상당 부분이 '경로가 나쁘다' 가 아니라")
         print("     **'딸 게 없었다'** 로 재해석된다. 성능 논문은 여기서 못 쓴다")
     elif room <= 10.0:
         print("  3 <= 여지 %.2f <= 10 => 여지가 있다. **우리 방법이 못 가져온 것이다**" % room)

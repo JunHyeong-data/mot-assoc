@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-"""실험 6 LOSO [2단계] -- **판정**. 사전 선언은 `PREREG-loso.md`.
+"""실험 6 LOSO [2단계] -- **판정**. 사전 등록은 `PREREG-loso.md`.
 
 물음: **장면을 보고(GT 없이) 매칭 임계값을 고르면, 본 적 없는 장면에서
 기본값 0.80 을 이기는가.**
 
-## 갈래 넷 -- R1 이 진짜 비교 대상이다
+## 조건 넷 -- R1 이 진짜 비교 대상이다
 
   R0  0.80 고정 (ByteTrack 기본값)          장면 정보 없음
   R1  훈련 6개 최적값의 중앙값               장면 정보 **없음**
   R2  훈련 6개로 적합한 예측 규칙            장면 정보 있음
-  R3  held-out 자신의 argmax (신탁)          정답을 봄
+  R3  held-out 자신의 argmax (오라클)          정답을 봄
 
 실험 1e 에서 검출별 정보가 **0** 인 상수 Sigma 가 NLL 최고를 찍은 적이 있다.
 같은 함정이 여기 있다 -- 이득이 "장면을 봐서" 가 아니라 "0.80 이라는 숫자가
@@ -47,9 +47,9 @@ from tracker.eval.collections.hota import HOTA                # noqa: E402
 
 GRIDJSON = Path("data/exp06/grid.json")
 DEFAULT = 0.80
-BAND = 0.3                      # 판정폭. exp03/exp05/exp06[A] 와 같은 자
+BAND = 0.3                      # 판정 기준. exp03/exp05/exp06[A] 와 같은 자
 MIN_FIT = 4                     # 예측변수 적합에 필요한 최소 유한 표본 (훈련 6개 중)
-# 사전 선언 목록 순서 그대로. 6~8 (0-based 5~7) 이 sigma 계열
+# 사전 등록 목록 순서 그대로. 6~8 (0-based 5~7) 이 sigma 계열
 SIGMA_KEYS = ("sigma 중앙값 (px)", "**sigma/sqrt(area) 중앙값**", "sigma 산포 CV")
 
 # `tag` 와 `canon` 은 grid.py 에서 가져온다. 폴더 이름과 JSON 키의 부호화가
@@ -57,7 +57,7 @@ SIGMA_KEYS = ("sigma 중앙값 (px)", "**sigma/sqrt(area) 중앙값**", "sigma �
 
 
 def snap(v, grid):
-    """그리드로 스냅. 동률이면 작은 쪽 (사전 선언)."""
+    """그리드로 스냅. 동률이면 작은 쪽 (사전 등록)."""
     return sorted((abs(g - v), g) for g in grid)[0][1]
 
 
@@ -76,7 +76,7 @@ def combined_hota(assign, metric):
     """시퀀스마다 다른 임계값의 트랙 파일을 모아 결합 HOTA (검출 수 가중).
 
     **빠진 시퀀스가 있으면 죽는다.** exp02 에서 seqmap 헤더 누락으로 MOT17-02 가
-    조용히 빠져 dHOTA 가 -0.43 -> -0.62 로 바뀐 적이 있다. 갈래마다 시퀀스 집합이
+    조용히 빠져 dHOTA 가 -0.43 -> -0.62 로 바뀐 적이 있다. 조건마다 시퀀스 집합이
     다르면 그 차이를 빼는 것 자체가 무의미하므로 조용히 넘어가지 않는다.
     """
     per, missing = {}, []
@@ -89,7 +89,7 @@ def combined_hota(assign, metric):
     if missing:
         raise SystemExit(
             "트랙 파일이 없다: %s\n먼저 grid.py 를 돌려라. 조용히 빼고 집계하면 "
-            "갈래끼리 **다른 시퀀스 집합**을 비교하게 된다." % ", ".join(missing))
+            "조건끼리 **다른 시퀀스 집합**을 비교하게 된다." % ", ".join(missing))
     return 100 * float(np.mean(metric.combine_sequences(per)["HOTA"]))
 
 
@@ -127,7 +127,7 @@ def main():
     best = {s: max(H[s], key=H[s].get) for s in seqs}
 
     print("=" * 96)
-    print("실험 6 LOSO [2단계] 판정 -- 사전 선언 PREREG-loso.md")
+    print("실험 6 LOSO [2단계] 판정 -- 사전 등록 PREREG-loso.md")
     print("=" * 96)
     print("장면을 보고 임계값을 고르면 본 적 없는 장면에서 0.80 을 이기는가.")
     print()
@@ -165,7 +165,7 @@ def main():
         #
         # NaN 처리 (감사 지적): 예전에는 **하나라도** NaN 이면 spearmanr 가
         # NaN 을 돌려주고 그게 점수 0 이 되어 그 후보가 조용히 사라졌다.
-        # 사전 선언은 후보 9개인데 실제로는 8개로 도는 일이 생긴다. 이제
+        # 사전 등록은 후보 9개인데 실제로는 8개로 도는 일이 생긴다. 이제
         # 유한한 짝만 골라 적합하고, 표본이 모자라면 **세어서 보고한다.**
         scoreboard = []
         for k in keys:
@@ -213,7 +213,7 @@ def main():
     label = {"R0": "R0  기본값 0.80",
              "R1": "R1  훈련 최적값의 중앙값 (상수)",
              "R2": "R2  예측 규칙",
-             "R3": "R3  신탁 (도달 불가 상한)"}
+             "R3": "R3  오라클 (도달 불가 상한)"}
     for a in ("R0", "R1", "R2", "R3"):
         print("%-34s %10.3f %10.3f" % (label[a], comb_h[a], unw[a]))
 
@@ -223,10 +223,10 @@ def main():
     print("  검산: R0 결합 %.3f vs grid.json 의 0.80 %.3f  %s"
           % (comb_h["R0"], ref, "OK" if abs(comb_h["R0"] - ref) < 1e-6 else "** 불일치 **"))
 
-    # ---------------- 사전 선언한 판정 ----------------
+    # ---------------- 사전 등록한 판정 ----------------
     print()
     print("=" * 96)
-    print("사전 선언한 판정  (판정폭 %.1f HOTA)" % BAND)
+    print("사전 등록한 판정  (판정 기준 %.1f HOTA)" % BAND)
     print("=" * 96)
     e1 = comb_h["R2"] - comb_h["R0"]
     e2 = comb_h["R2"] - comb_h["R1"]
@@ -240,24 +240,24 @@ def main():
     w2, n2, p2, t2 = sign_test(d2)
     tie = lambda t: ("  (동률 %d 제외)" % t) if t else ""
 
-    print("  [1] 주 종말점   R2 - R0 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f%s"
+    print("  [1] 주 평가지표   R2 - R0 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f%s"
           % (e1, e1u, w1, n1, p1, tie(t1)))
     print("  [2] 기여 귀속   R2 - R1 = %+.3f  (가중 없음 %+.3f)   부호 %d/%d, p=%.3f%s"
           % (e2, e2u, w2, n2, p2, tie(t2)))
-    print("  [3] 신탁 상한   R3 - R0 = %+.3f  (참고. 주장 아님)" % e3)
+    print("  [3] 오라클 상한   R3 - R0 = %+.3f  (참고. 주장 아님)" % e3)
 
     # 아래 두 줄은 **결과를 보고 추가했다.** 판정 로직은 안 건드렸다 --
     # evaluate.py 가 실험 5 에서 같은 상황에 찍던 경고와 회수율을 옮긴 것뿐이다.
     if e1 * e1u < 0:
         print("      ** 가중 여부에 따라 [1] 의 부호가 뒤집힌다. 큰 시퀀스가 지배한다는 뜻이다. **")
-        print("         사전 선언한 주 판정은 **가중 결합**이다. 둘 다 판정폭 안이므로 결론은 같다")
+        print("         사전 등록한 주 판정은 **가중 결합**이다. 둘 다 판정 기준 안이므로 결론은 같다")
     if e3 > 0:
-        print("      신탁 회수율: 가중 %.0f%%, 가중 없음 %.0f%%   (R2-R0 을 R3-R0 으로 나눈 것)"
+        print("      오라클 회수율: 가중 %.0f%%, 가중 없음 %.0f%%   (R2-R0 을 R3-R0 으로 나눈 것)"
               % (100 * e1 / e3, 100 * e1u / max(unw["R3"] - unw["R0"], 1e-9)))
 
     if weak:
         print()
-        print("      ** 적합 표본이 모자라 점수 0 이 된 후보가 있다 (사전 선언은 9개) **")
+        print("      ** 적합 표본이 모자라 점수 0 이 된 후보가 있다 (사전 등록은 9개) **")
         for k, v in sorted(weak.items(), key=lambda z: -z[1]):
             print("         %-30s %d/%d fold" % (k[:30], v, len(seqs)))
 
@@ -271,7 +271,7 @@ def main():
 
     print()
     print("=" * 96)
-    print("결론 -- 사전 선언한 표를 그대로 적용한다")
+    print("결론 -- 사전 등록한 표를 그대로 적용한다")
     print("=" * 96)
     if e1 > BAND and e2 > BAND:
         print("  [1] 통과, [2] 통과 => **적응 규칙이 실재한다.**")
@@ -282,12 +282,12 @@ def main():
     elif e1 < -BAND:
         print("  [1] 음의 방향 => **규칙이 해롭다.** 레버 2 가 죽는다")
     else:
-        print("  [1] 판정폭 안 => **레버 2 가 죽는다.**")
-        print("      신탁 %+.2f 는 도달 불가였다. 임계값 통로도 닫힌다" % e3)
+        print("  [1] 판정 기준 안 => **레버 2 가 죽는다.**")
+        print("      오라클 %+.2f 는 도달 불가였다. 임계값 경로도 닫힌다" % e3)
 
     if nsig == 0:
         print()
-        print("  [4] sigma 계열이 한 번도 안 뽑혔다 => 눈금이 필요 없는 자리에서도")
+        print("  [4] sigma 계열이 한 번도 안 뽑혔다 => 스케일이 필요 없는 자리에서도")
         print("      sigma 는 밀도/겹침 같은 단순 관측량에 진다")
     return 0
 

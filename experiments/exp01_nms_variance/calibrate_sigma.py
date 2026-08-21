@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """실험 1e -- sigma 를 보정한 뒤 넣으면 쓸 수 있는가.
 
-**사전 선언은 README 의 "실험 1e" 절. 자료보다 먼저 커밋했다.**
+**사전 등록은 README 의 "실험 1e" 절. 자료보다 먼저 커밋했다.**
 
 핵심 설계는 **leave-one-sequence-out** 이다. 같은 시퀀스 안에서 보정하면 당연히
 맞는다 -- 그건 아무 말도 안 해준다. 6개로 적합시키고 **본 적 없는 1개**에서
 평가해야 "배포 가능한 보정인가" 를 묻는 것이 된다.
 
-주 종말점: **적용범위(coverage)**. 보정됐다면 z^2 <= chi2(2)_95% 인 비율이 95%.
-진짜 관문: **상자크기 모형(C)을 NLL 로 이기는가.** coverage 만 맞추는 건 배율
+주 평가지표: **적용범위(coverage)**. 보정됐다면 z^2 <= chi2(2)_95% 인 비율이 95%.
+진짜 사전 점검: **박스크기 모형(C)을 NLL 로 이기는가.** coverage 만 맞추는 건 배율
 하나로 되지만, C 를 이기려면 sigma 에 크기 이상의 정보가 있어야 한다.
 
 사용법:
@@ -28,7 +28,7 @@ SEQS = ["MOT17-02", "MOT17-04", "MOT17-05", "MOT17-09",
 TAG = sys.argv[1] if len(sys.argv) > 1 else ""   # "" = NMS, "-dfl" = DFL
 Q95 = chi2.ppf(0.95, 2)
 QMED = chi2.ppf(0.5, 2)
-NBIN = 4                       # E2 의 구간 수. **미리 못박는다** (사전 선언 함정 3)
+NBIN = 4                       # E2 의 구간 수. **미리 못박는다** (사전 등록 함정 3)
 
 
 def load(seq):
@@ -84,7 +84,7 @@ def fit_B(tr):
 
 
 def fit_C(tr):
-    """상자크기만. Sigma = k h^2 I. **넘어야 할 기준선.**"""
+    """박스크기만. Sigma = k h^2 I. **넘어야 할 기준선.**"""
     hs = tr["h"] ** 2
     z = quad((hs, np.zeros_like(hs), hs), tr["ex"], tr["ey"])
     k = float(np.mean(z)) / 2.0
@@ -129,7 +129,7 @@ def fit_E2(tr):
 
 
 MODELS = [("A0 날것 Sigma_d", fit_A0), ("A1 전역 상수배", fit_A1),
-          ("B  상수 Sigma", fit_B), ("C  상자크기만", fit_C),
+          ("B  상수 Sigma", fit_B), ("C  박스크기만", fit_C),
           ("E1 컨포멀 배율", fit_E1), ("E2 조건부 컨포멀", fit_E2)]
 
 
@@ -140,7 +140,7 @@ def main():
     print("=" * 88)
     print("적합: 6시퀀스   평가: 나머지 1시퀀스 (본 적 없는 장면)")
     # '%(' 는 매핑 키 참조로 파싱된다. 반드시 '%%(' 로 이스케이프할 것.
-    print("주 종말점 coverage = z^2 <= chi2(2)_95%% (%.2f) 인 비율. 목표 95%%" % Q95)
+    print("주 평가지표 coverage = z^2 <= chi2(2)_95%% (%.2f) 인 비율. 목표 95%%" % Q95)
     print()
 
     res = {name: {"cov": [], "nll": []} for name, _ in MODELS}
@@ -170,11 +170,11 @@ def main():
     print()
 
     print("=" * 88)
-    print("사전 선언한 판정")
+    print("사전 등록한 판정")
     print("=" * 88)
     cov_e1 = np.median(res["E1 컨포멀 배율"]["cov"])
     cov_e2 = np.median(res["E2 조건부 컨포멀"]["cov"])
-    nll_c = np.median(res["C  상자크기만"]["nll"])
+    nll_c = np.median(res["C  박스크기만"]["nll"])
     best_e = min(np.median(res["E1 컨포멀 배율"]["nll"]),
                  np.median(res["E2 조건부 컨포멀"]["nll"]))
     # **95% 에 가까운 쪽**을 고른다. max 를 쓰면 과잉적용범위를 상으로 주게 된다
@@ -182,23 +182,23 @@ def main():
     best_cov = min((cov_e1, "E1"), (cov_e2, "E2"), key=lambda t: abs(t[0] - 0.95))[0]
     print("  E 의 coverage 중앙값  E1 %.1f%%  E2 %.1f%%   (목표 95%%)"
           % (100 * cov_e1, 100 * cov_e2))
-    print("  NLL 중앙값            E 최선 %.3f   C(상자크기) %.3f" % (best_e, nll_c))
+    print("  NLL 중앙값            E 최선 %.3f   C(박스크기) %.3f" % (best_e, nll_c))
     print()
     ok_cov = 0.90 - 1e-9 <= best_cov <= 0.97 + 1e-9
     ok_nll = best_e < nll_c
     if ok_cov and ok_nll:
         print("  => **보정하면 쓸 수 있다.** coverage 를 맞추면서 크기모형도 이긴다.")
     elif ok_cov:
-        print("  => 눈금은 고쳐지지만 **모양은 여전히 틀렸다.**")
-        print("     coverage 는 맞는데 상자크기 모형을 못 이긴다.")
+        print("  => 스케일은 고쳐지지만 **모양은 여전히 틀렸다.**")
+        print("     coverage 는 맞는데 박스크기 모형을 못 이긴다.")
         print("     sigma 에 '크기 이상의 정보' 는 없다는 [2b] 결론과 같다.")
     else:
         print("  => **보정이 장면을 넘어가지 못한다.** held-out 에서 coverage 도 못 맞춘다.")
-        print("     제약 1(시퀀스마다 눈금이 다르다)이 최종 결론이 된다.")
+        print("     제약 1(시퀀스마다 스케일이 다르다)이 최종 결론이 된다.")
     print()
     print("  * coverage 와 NLL 을 같이 본다. 하나만 골라 보고하지 않는다 (함정 2).")
 
-    # ---- 탐색적 (사전 선언 아님. 판정에 쓰지 않는다) ----------------------
+    # ---- 탐색적 (사전 등록 아님. 판정에 쓰지 않는다) ----------------------
     # coverage 는 95% 분위 **한 점**만 본다. 꼬리를 맞춰도 분포의 가운데가
     # 어긋나 있을 수 있다. 보정 후 z^2 중앙값이 chi2(2) 중앙값과 맞는지 같이 본다.
     print()
@@ -206,7 +206,7 @@ def main():
     print("[탐색적] 보정 뒤 분포의 가운데도 맞는가 -- z^2 중앙값 / chi2(2) 중앙값")
     print("=" * 88)
     print("  coverage 는 95%% 분위 한 점만 본다. 꼬리를 맞춰도 가운데가 틀릴 수 있다.")
-    print("  1.0 이면 완벽. 판정에는 쓰지 않는다 (사전 선언에 없다).")
+    print("  1.0 이면 완벽. 판정에는 쓰지 않는다 (사전 등록에 없다).")
     print()
     print("%-12s" % "held-out" + "".join("%13s" % n.split()[0] for n, _ in MODELS))
     print("-" * 88)

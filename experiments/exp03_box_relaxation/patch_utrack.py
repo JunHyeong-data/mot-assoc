@@ -1,5 +1,5 @@
 """
-실험 3 - UTrack 클론에 상자확장 갈래를 설치한다.
+실험 3 - UTrack 클론에 박스확장 조건을 설치한다.
 
 건드리는 것은 두 가지뿐이다.
   1. `tracker/box_relax.py`      새 파일 복사
@@ -26,7 +26,7 @@ from ..box_relax import relaxed_iou_distance
 
 
 class RelaxBoTSORT(Associations):
-    """BoTSORT 와 모든 것이 같고 IoU 를 확장된 상자로 잰다.
+    """BoTSORT 와 모든 것이 같고 IoU 를 확장된 박스로 잰다.
 
     확장 방식은 RELAX_MODE 환경변수로 고른다. 'measure' 면 확장이 0 이므로
     botsort 와 수치가 같아야 한다.

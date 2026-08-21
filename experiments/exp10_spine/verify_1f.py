@@ -78,7 +78,7 @@ def main():
     print("=" * 92)
     print("실험 10 -- 척추 검산. 실험 1f 를 원고 척추로 쓸 수 있는가  [소스 %s]" % src)
     print("=" * 92)
-    print("A = 개체별 Sigma_d,  C = 상자크기 h^2 모형.  **모수 개수가 같다 (k, nu).**")
+    print("A = 개체별 Sigma_d,  C = 박스크기 h^2 모형.  **모수 개수가 같다 (k, nu).**")
     print("NLL 이 낮을수록 좋다. d = NLL_A - NLL_C 이므로 **d > 0 이면 C 승**.")
     print()
 

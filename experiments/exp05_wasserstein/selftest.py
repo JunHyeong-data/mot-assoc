@@ -95,19 +95,19 @@ for target in (0.3, 0.5, 0.7):
     check("[5] C 보정: 목표 %.2f" % target, abs(got - target) < 1e-6,
           "얻은 중앙값 %.6f" % got)
 
-# ---- [6] 상자크기 Sigma 가 NWD 정의와 맞는가 ---------------------------
+# ---- [6] 박스크기 Sigma 가 NWD 정의와 맞는가 ---------------------------
 bx = np.array([[0.0, 0.0, 40.0, 100.0]])
 sv = size_var(bx)
 check("[6] size_var = diag(w^2,h^2)/4",
       abs(sv[0, 0] - 400.0) < 1e-9 and abs(sv[0, 1] - 2500.0) < 1e-9,
       "w=40,h=100 -> %.1f, %.1f (기대 400, 2500)" % (sv[0, 0], sv[0, 1]))
 
-# ---- [7] 완전히 같은 상자면 비용 0 -------------------------------------
+# ---- [7] 완전히 같은 박스면 비용 0 -------------------------------------
 same = w2_matrix(t_box, t_box, base_t, base_t)
-check("[7] 같은 상자/같은 Sigma 이면 W^2 = 0", abs(float(same[0, 0])) < 1e-9,
+check("[7] 같은 박스/같은 Sigma 이면 W^2 = 0", abs(float(same[0, 0])) < 1e-9,
       "W^2 = %.2e" % same[0, 0])
 
-# ---- [8] 규모를 맞추면 갈래 간 비교가 규모에 안 흔들리는가 --------------
+# ---- [8] 규모를 맞추면 조건 간 비교가 규모에 안 흔들리는가 --------------
 # 같은 '모양' 의 Sigma 를 100배 다르게 줘도, 규모를 맞춘 뒤에는 W^2 이 같아야 한다.
 shape = rng.uniform(1, 10, (50, 2))
 v_small, v_big = shape * 0.01, shape * 1.0
@@ -122,7 +122,7 @@ check("[8] 규모 맞춘 뒤 100배 차이가 사라진다",
 print()
 print("-- 실험 5b: 크기 정규화 (PREREG-norm.md) " + "-" * 32)
 
-# [9] 척도 불변: 장면 전체를 alpha 배 하면 W^2_norm 은 그대로여야 한다.
+# [9] 잣대 불변: 장면 전체를 alpha 배 하면 W^2_norm 은 그대로여야 한다.
 #     (원래 W^2 은 alpha^2 배가 된다 -- 그게 실험 5 가 진 이유의 가설이다)
 tb9 = np.array([[100.0, 100.0, 160.0, 280.0], [300.0, 50.0, 340.0, 170.0]])
 db9 = np.array([[106.0, 104.0, 166.0, 284.0], [297.0, 55.0, 337.0, 175.0]])
@@ -133,7 +133,7 @@ for alpha in (2.0, 7.5):
     n2 = w2_matrix_norm(tb9 * alpha, db9 * alpha, tv9 * alpha ** 2, dv9 * alpha ** 2)
     r1 = w2_matrix(tb9, db9, tv9, dv9)
     r2 = w2_matrix(tb9 * alpha, db9 * alpha, tv9 * alpha ** 2, dv9 * alpha ** 2)
-    check("[9] 척도 불변 (x%.1f): 정규화형" % alpha,
+    check("[9] 잣대 불변 (x%.1f): 정규화형" % alpha,
           np.abs(n1 - n2).max() < 1e-9, "max|diff| = %.2e" % np.abs(n1 - n2).max())
     check("[9b] 대조 - 원래형은 alpha^2 배가 된다",
           np.abs(r2 - r1 * alpha ** 2).max() < 1e-6,
@@ -154,8 +154,8 @@ auto = w2_matrix_norm(tb9, db9, tv9, dv9)
 check("[10] 정규화형 == 좌표 나눈 뒤 원래형", np.abs(auto - man).max() < 1e-9,
       "max|diff| = %.2e" % np.abs(auto - man).max())
 
-# [11] 같은 상자/같은 Sigma 이면 0
-check("[11] 같은 상자면 W^2_norm = 0",
+# [11] 같은 박스/같은 Sigma 이면 0
+check("[11] 같은 박스면 W^2_norm = 0",
       abs(float(w2_matrix_norm(tb9[:1], tb9[:1], tv9[:1], tv9[:1])[0, 0])) < 1e-12,
       "W^2 = %.2e" % w2_matrix_norm(tb9[:1], tb9[:1], tv9[:1], tv9[:1])[0, 0])
 

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """실험 1g -- 소스를 DFL 분포 분산으로 바꾼다.
 
-**사전 선언은 README 의 "실험 1g" 절. 자료보다 먼저 커밋했다.**
+**사전 등록은 README 의 "실험 1g" 절. 자료보다 먼저 커밋했다.**
 
-YOLOv8 헤드는 상자 네 변의 거리를 reg_max=16 빈의 **분포**로 예측하고
+YOLOv8 헤드는 박스 네 변의 거리를 reg_max=16 빈의 **분포**로 예측하고
 DFL 모듈이 그 **기댓값만** 취한다. 분산은 버려진다. 그 분산이 곧 위치
 불확실성이고 추가 추론 비용이 0 이다.
 
@@ -13,7 +13,7 @@ DFL 모듈이 그 **기댓값만** 취한다. 분산은 버려진다. 그 분산
         p = x.view(b, 4, c1, A).transpose(2, 1).softmax(1)
     빈 인덱스 i 에 대해 E[d]=sum(i*p), Var[d]=sum(i^2*p)-E[d]^2 (stride 단위).
 
-    **검산됨**: 이렇게 복원한 기대거리로 상자를 다시 만들면 NMS 출력과
+    **검산됨**: 이렇게 복원한 기대거리로 박스를 다시 만들면 NMS 출력과
     6e-05 px 안에서 일치한다 (`scratchpad/dfl_probe.py`).
 
 중심 공분산 (변끼리 독립 가정 -- DFL 이 변마다 별도 softmax 라 구조적으로 그렇다):
@@ -58,7 +58,7 @@ _orig_nms = ulnms.non_max_suppression
 
 
 def patched_nms(prediction, *a, **kw):
-    """살아남은 상자의 앵커 인덱스를 잡는다. exp01 과 같은 방식."""
+    """살아남은 박스의 앵커 인덱스를 잡는다. exp01 과 같은 방식."""
     res = _orig_nms(prediction, *a, **{**kw, "return_idxs": True})
     out, keepi = res
     CAP["keep"] = keepi[0].long().cpu().numpy()
@@ -207,6 +207,6 @@ Am = np.column_stack([np.ones_like(rz), rz])
 ex_ = rx - Am @ np.linalg.lstsq(Am, rx, rcond=None)[0]
 ey_ = ry - Am @ np.linalg.lstsq(Am, ry, rcond=None)[0]
 print()
-print("  [1] rho_primary = %+.4f   h 통제 편상관 = %+.4f   (관문 0.3)"
+print("  [1] rho_primary = %+.4f   h 통제 편상관 = %+.4f   (사전 점검 0.3)"
       % (rho, np.corrcoef(ex_, ey_)[0, 1]))
 print("      * [2] (C 를 NLL 로 이기는가) 는 student_t.py 로 따로 판정한다")

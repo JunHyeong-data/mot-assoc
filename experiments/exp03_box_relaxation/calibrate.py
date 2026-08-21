@@ -1,8 +1,8 @@
 """
 실험 3 - 확장량을 맞춘다.
 
-measure 실행이 남긴 통계에서, 각 alpha 마다 세 갈래의 **평균 확장량이 같아지도록**
-상수를 낸다. 이걸 안 맞추면 갈래 사이의 차이가 "정보가 있었나" 가 아니라
+measure 실행이 남긴 통계에서, 각 alpha 마다 세 조건의 **평균 확장량이 같아지도록**
+상수를 낸다. 이걸 안 맞추면 조건 사이의 차이가 "정보가 있었나" 가 아니라
 "더 키웠나" 가 되어버린다. 이 실험의 전부가 여기에 걸려 있다.
 
     R  sigma : pad = min(alpha * s,  CAP * w)
@@ -45,7 +45,7 @@ def load(paths):
                 sums[k] = sums.get(k, 0.0) + float(v)
         res = np.asarray(s.get('reservoir', []), dtype=float).reshape(-1, 4)
         if res.shape[0]:
-            # 시퀀스마다 표본 수가 다르다. 본 상자 수에 비례하도록 가중 재표집한다.
+            # 시퀀스마다 표본 수가 다르다. 본 박스 수에 비례하도록 가중 재표집한다.
             rows.append((res, n))
         caps.add(s.get('_meta', {}).get('cap'))
     if not rows:
@@ -54,7 +54,7 @@ def load(paths):
 
 
 def pooled_sample(rows, n_total, size=200000, seed=0):
-    """시퀀스별 표본을 '본 상자 수' 비율로 합쳐 하나의 표본을 만든다."""
+    """시퀀스별 표본을 '본 박스 수' 비율로 합쳐 하나의 표본을 만든다."""
     rng = np.random.default_rng(seed)
     out = []
     for res, n in rows:
@@ -114,7 +114,7 @@ def main():
 
     if zero_frac > 0.5:
         print('')
-        print('  !! 절반 넘는 상자에 분산이 안 실렸다. nms_var 가 안 붙었거나')
+        print('  !! 절반 넘는 박스에 분산이 안 실렸다. nms_var 가 안 붙었거나')
         print('     검출 경로가 분산을 안 넘긴다. 이대로면 R 은 의미가 없다.')
     if e_sx <= 0 or e_sy <= 0:
         sys.exit('ERROR E[s] is 0 -- 확장이 아예 안 일어난다. 위 경고부터 해결할 것')
@@ -131,7 +131,7 @@ def main():
     print('  이 상관이 높으면 K2 가 R 을 거의 재현할 것으로 예상된다 (실험 1 과 일치).')
 
     print('')
-    print('== 갈래별 환경변수 (평균 확장량 일치, CAP=%.3f 반영) ==' % cap)
+    print('== 조건별 환경변수 (평균 확장량 일치, CAP=%.3f 반영) ==' % cap)
     for al in a.alphas:
         tx = mean_pad_sigma(sx, w, al, cap)
         ty = mean_pad_sigma(sy, h, al, cap)
@@ -149,13 +149,13 @@ def main():
         print('   R  RELAX_MODE=sigma RELAX_ALPHA=%g' % al)
         print('   K1 RELAX_MODE=const RELAX_DX=%.6f RELAX_DY=%.6f' % (dx, dy))
         print('   K2 RELAX_MODE=prop  RELAX_CW=%.6f RELAX_CH=%.6f' % (cw, ch))
-        # 확인: 세 갈래의 평균이 실제로 같은가
+        # 확인: 세 조건의 평균이 실제로 같은가
         m1 = float(np.minimum(dx, cap * w).mean())
         m2 = float(np.minimum(cw * w, cap * w).mean())
         print('   check mean pad x :  R %.4f   K1 %.4f   K2 %.4f' % (tx, m1, m2))
 
     print('')
-    print('세 갈래 모두 RELAX_APPLY=both, RELAX_CAP=%.3f 로 같게 둘 것.' % cap)
+    print('세 조건 모두 RELAX_APPLY=both, RELAX_CAP=%.3f 로 같게 둘 것.' % cap)
 
 
 if __name__ == '__main__':

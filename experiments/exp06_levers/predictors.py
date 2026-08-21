@@ -3,17 +3,17 @@
 
 `headroom.py` 가 보인 것:
   [A] 전역 최적(0.85)은 기본값(0.80)보다 +0.037 -- **여유 없음**
-  [B] 시퀀스별 최적은 0.70~0.95 로 갈리고, 신탁 이득이 **평균 +1.07 HOTA**
+  [B] 시퀀스별 최적은 0.70~0.95 로 갈리고, 오라클 이득이 **평균 +1.07 HOTA**
 
 즉 이득은 전부 "장면마다 다르다" 에 들어 있다. 그러면 질문은 하나다:
 **장면의 무엇을 보면 최적 임계값을 알 수 있는가.**
 
 ## 왜 이게 우리 연구와 맞물리나
 
-임계값은 **장면당 스칼라 하나**다. 절대 눈금이 필요 없고 **단조 관계만** 있으면 된다.
+임계값은 **장면당 스칼라 하나**다. 절대 스케일이 필요 없고 **단조 관계만** 있으면 된다.
 그게 우리가 실험 1 에서 확정한 sigma 의 성질이다 -- **신호 O(편상관 0.32,
-검출기 무관), 눈금 X(chi^2 80~562배)**. 지금까지 우리는 눈금이 필요한 자리
-(거리, 칼만 R, 상자 확장)에 눈금이 틀린 양을 넣어 여덟 번 졌다.
+검출기 무관), 스케일 X(chi^2 80~562배)**. 지금까지 우리는 스케일이 필요한 자리
+(거리, 칼만 R, 박스 확장)에 스케일이 틀린 양을 넣어 여덟 번 졌다.
 
 ## 이 스크립트가 답하지 않는 것 -- 미리 못박는다
 
@@ -41,7 +41,7 @@ from replay import load, SEQS                               # noqa: E402
 
 # headroom.py 가 낸 시퀀스별 최적 임계값 (재현: python experiments/exp06_levers/headroom.py)
 #
-# **정정 (LOSO 사전 선언대로).** headroom.py 의 그리드는 상단이 0.95 였는데
+# **정정 (LOSO 사전 등록대로).** headroom.py 의 그리드는 상단이 0.95 였는데
 # MOT17-10 과 -13 의 최적이 거기 붙어 있었다. 0.98 을 넣으니 **MOT17-13 이
 # 0.95 -> 0.98 로 옮겨가고 이득이 1.73 -> 4.66 으로 커졌다** (여전히 그리드 끝이다).
 # 나머지 여섯은 그대로다. 손으로 옮겨 적는 대신 `grid.py` 가 표를 JSON 으로 남긴다:
@@ -83,7 +83,7 @@ def scene_stats(seq):
     d = np.linalg.norm(np.diff(med, axis=0), axis=1)
     ego = float(np.nanmedian(d)) if len(d) else np.nan
 
-    # 겹침 정도: 프레임당 고신뢰 상자들의 평균 최대 IoU (밀집·가림 대리)
+    # 겹침 정도: 프레임당 고신뢰 박스들의 평균 최대 IoU (밀집·가림 대리)
     ov = []
     for f in range(1, nf + 1, 5):                       # 5프레임마다 -- 충분하다
         m = (fr == f) & hi
@@ -104,7 +104,7 @@ def scene_stats(seq):
         "밀도 (프레임당 고신뢰)": float(cnt.mean()),
         "겹침 (평균 최대 IoU)": float(np.mean(ov)) if ov else np.nan,
         "자차운동 (중앙 중심 이동 px)": ego,
-        "상자 높이 중앙값": float(np.median(h[hi])),
+        "박스 높이 중앙값": float(np.median(h[hi])),
         "높이 산포 CV": float(np.std(h[hi]) / max(np.mean(h[hi]), 1e-9)),
         "sigma 중앙값 (px)": float(np.median(sig[hi])),
         "**sigma/sqrt(area) 중앙값**": float(np.median(sig[hi] / np.sqrt(area[hi]))),
@@ -135,7 +135,7 @@ def main():
     for k in keys:
         print("%-30s" % k + "".join("%9.3f" % rows[s][k] for s in rows))
     print("%-30s" % "최적 임계값" + "".join("%9.2f" % BEST[s] for s in rows))
-    print("%-30s" % "신탁 이득 (HOTA)" + "".join("%9.2f" % GAIN[s] for s in rows))
+    print("%-30s" % "오라클 이득 (HOTA)" + "".join("%9.2f" % GAIN[s] for s in rows))
 
     print()
     print("=" * 92)

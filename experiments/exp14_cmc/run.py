@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """실험 14 -- **카메라 운동 보상을 넣으면 여지의 몇 %가 회복되는가.**
 
-사전 선언은 `PREREG.md` (자료보다 먼저 커밋).
+사전 등록은 `PREREG.md` (자료보다 먼저 커밋).
 
 exp12 가 연관 여지를 +3.92 HOTA (MOT17-13 은 +14.44) 로 쟀고,
 exp13 이 그 여지가 **카메라 운동** 때문임을 지목했다. 여기서 검증한다.
 
-**바뀌는 것은 트랙 예측 상자의 위치 하나다.** 검출·비용함수·임계값·트랙
+**바뀌는 것은 트랙 예측 박스의 위치 하나다.** 검출·비용함수·임계값·트랙
 관리는 전부 그대로다.
 
 사용법:
@@ -37,7 +37,7 @@ ROOM = {"MOT17-02-FRCNN": 2.02, "MOT17-04-FRCNN": 0.91, "MOT17-05-FRCNN": 4.86,
         "MOT17-09-FRCNN": 2.75, "MOT17-10-FRCNN": 6.02, "MOT17-11-FRCNN": 8.87,
         "MOT17-13-FRCNN": 12.17}
 # **정정 (2026-08-18 감사)**: 예전 값(2.44/1.44/6.50/2.92/6.42/11.21/14.44)은
-# exp12 신탁이 3단계까지 풀던 판이다. 1단계로 한정하니 위 값이 됐다.
+# exp12 오라클이 3단계까지 풀던 판이다. 1단계로 한정하니 위 값이 됐다.
 STATIC = ("MOT17-02-FRCNN", "MOT17-04-FRCNN")     # exp13: 전역이동 0.00 px
 
 
@@ -85,7 +85,7 @@ def gmc_shifts(seq, n_frames):
 
 
 class ShiftTracker(WTracker):
-    """트랙 예측 상자를 전역 이동만큼 옮긴 뒤 IoU 를 잰다."""
+    """트랙 예측 박스를 전역 이동만큼 옮긴 뒤 IoU 를 잰다."""
 
     shift = np.zeros(2)
 
@@ -156,7 +156,7 @@ def main():
     print("=" * 96)
     print("실험 14 -- 카메라 운동 보상을 넣으면 여지의 몇 %가 회복되는가")
     print("=" * 96)
-    print("사전 선언 PREREG.md (자료보다 먼저). 바뀌는 것은 트랙 예측 상자의 위치 하나다.")
+    print("사전 등록 PREREG.md (자료보다 먼저). 바뀌는 것은 트랙 예측 박스의 위치 하나다.")
     print()
 
     replay("base", None)
@@ -169,7 +169,7 @@ def main():
 
     print()
     print("=" * 96)
-    print("사전 선언한 관문")
+    print("사전 등록한 사전 점검")
     print("=" * 96)
     ok = True
     g0a = abs(hb - 61.002) < 0.01
@@ -187,12 +187,12 @@ def main():
     print("  [0c] GMC 가 이동을 낸다  %s" % ("OK" if g0c else "일부 0"))
     if not ok:
         print()
-        print("  ** 관문 실패. 판정하지 않는다 **")
+        print("  ** 사전 점검 실패. 판정하지 않는다 **")
         return 1
 
     print()
     print("=" * 96)
-    print("사전 선언한 종말점")
+    print("사전 등록한 평가지표")
     print("=" * 96)
     print("  결합 HOTA   base %.3f   ocmc %+.3f   gmc %+.3f" % (hb, ho - hb, hg - hb))
     print()
@@ -222,9 +222,9 @@ def main():
     recg = 100 * (pg[s13] - pb[s13]) / ROOM[s13]
     print()
     print("=" * 96)
-    print("판정 -- 사전 선언한 읽는 법 (MOT17-13 의 신탁 CMC 회복률)")
+    print("판정 -- 사전 등록한 읽는 법 (MOT17-13 의 오라클 CMC 회복률)")
     print("=" * 96)
-    print("  MOT17-13: 여지 %.2f,  신탁 CMC %+.2f (**%.0f%%**),  실제 GMC %+.2f (%.0f%%)"
+    print("  MOT17-13: 여지 %.2f,  오라클 CMC %+.2f (**%.0f%%**),  실제 GMC %+.2f (%.0f%%)"
           % (ROOM[s13], po[s13] - pb[s13], rec, pg[s13] - pb[s13], recg))
     print()
     if rec > 60:
@@ -235,9 +235,9 @@ def main():
         print("  < 30%% => **exp13 의 진단이 틀렸다.** 이동은 컸지만 여지의 원인이 아니다")
     # 회복률이 음수면 "절반" 비교가 뜻이 없다. 양수일 때만 본다 (감사 정정).
     if rec > 0 and recg < rec / 2:
-        print("  실제 GMC 가 신탁의 절반도 못 낸다 -> **추정 정확도가 병목이다**")
+        print("  실제 GMC 가 오라클의 절반도 못 낸다 -> **추정 정확도가 병목이다**")
     elif abs(hg - ho) < 0.05:
-        print("  결합 HOTA 에서 실제 GMC 가 신탁과 사실상 같다 (%+.3f vs %+.3f)"
+        print("  결합 HOTA 에서 실제 GMC 가 오라클과 사실상 같다 (%+.3f vs %+.3f)"
               % (hg - hb, ho - hb))
         print("  -> **추정 정확도는 병목이 아니다.** 평행이동 보상 자체의 한계다")
     return 0

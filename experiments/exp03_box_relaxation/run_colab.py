@@ -4,12 +4,12 @@
 `track.py` 는 한 번 돌 때마다 (1) 결과 폴더를 새로 만들고 (2) 추적하고
 (3) 평가까지 한다. 그런데 시퀀스를 통합해 돌리면 MOT17-11 구간에서
 17초/프레임으로 붕괴한다(exp02 실측). 그래서 **시퀀스별로 돌리고 결과를
-갈래별 폴더에 모은 뒤 마지막에 한 번만 평가**해야 한다. 그 잔손질을 여기서 한다.
+조건별 폴더에 모은 뒤 마지막에 한 번만 평가**해야 한다. 그 잔손질을 여기서 한다.
 
 단계:
 
-    python run_colab.py measure     A 갈래. 확장 0. 기준선과 같아야 한다 + 통계 수집
-    python run_colab.py calibrate   통계 -> 갈래별 상수 (판정 전에 눈으로 볼 것)
+    python run_colab.py measure     A 조건. 확장 0. 기준선과 같아야 한다 + 통계 수집
+    python run_colab.py calibrate   통계 -> 조건별 상수 (판정 전에 눈으로 볼 것)
     python run_colab.py arms        R 격자 + K1 + K2 (+ 진단용 K3, K4)
     python run_colab.py table       모아서 표로
 
@@ -43,7 +43,7 @@ def sh(cmd, cwd, env=None, check=True):
 
     예전에는 반환 코드를 안 봤다. 그래서 평가가 통째로 실패했는데도
     다음 단계로 넘어가 **성공했는지 실패했는지조차 알 수 없는 출력**이
-    나왔다 (2026-08-20). CLAUDE.md -- "관문이 실패하면 판정하지 말고 멈춘다."
+    나왔다 (2026-08-20). CLAUDE.md -- "사전 점검이 실패하면 판정하지 말고 멈춘다."
     """
     print('$ ' + ' '.join(str(c) for c in cmd), flush=True)
     r = subprocess.run(cmd, cwd=cwd, env=env)
@@ -106,7 +106,7 @@ def newest_run_dir(p, assoc):
 
 
 def run_one(p, arm, assoc, seq, env_extra, gpu):
-    """한 시퀀스를 돌리고 결과 txt 를 갈래 폴더로 옮긴다."""
+    """한 시퀀스를 돌리고 결과 txt 를 조건 폴더로 옮긴다."""
     dest = p.results / arm / 'data'
     dest.mkdir(parents=True, exist_ok=True)
     if list(dest.glob(seq + '*.txt')):
@@ -137,7 +137,7 @@ def run_one(p, arm, assoc, seq, env_extra, gpu):
 
 
 def evaluate(p, arm):
-    """갈래 폴더 전체를 7시퀀스 기준으로 한 번에 평가한다."""
+    """조건 폴더 전체를 7시퀀스 기준으로 한 번에 평가한다."""
     n_v, n_i = write_ann(p, SEQS)
     print('평가 %s  (videos %d)' % (arm, n_v))
     code = (
@@ -189,7 +189,7 @@ def stage_measure(p, a):
         restore_ann(p)
     print('')
     print('=' * 66)
-    print('관문: 위 HOTA 가 exp02 기준선 botsort 64.494 와 같아야 한다.')
+    print('사전 점검: 위 HOTA 가 exp02 기준선 botsort 64.494 와 같아야 한다.')
     print('다르면 훅이 뭔가 바꾸고 있다. 여기서 멈추고 원인을 찾을 것.')
     print('=' * 66)
 
@@ -262,7 +262,7 @@ def stage_table(p, a):
         print('경고: --all 은 다른 실험의 실행 폴더까지 보여준다.')
         print('      그 폴더들의 요약은 **그때의 seqmap 으로** 평가된 것이라')
         print('      시퀀스 수가 다르면 서로 비교할 수 없다.')
-        print('      (exp02 에서 MOT17-02 누락 시 모든 갈래가 ~2.35 부풀었다)')
+        print('      (exp02 에서 MOT17-02 누락 시 모든 조건이 ~2.35 부풀었다)')
         print('')
     else:
         arms = sorted((n for n in found if n.startswith(ARM_PREFIXES)),
@@ -302,7 +302,7 @@ def stage_table(p, a):
         print('| %-16s | %s | %6s |'
               % (arm, ' | '.join('%-7s' % vals[c] for c in cols), d))
     print('')
-    print('판정은 K2_prop 로만 한다. K1/K3/K4 는 진단이다 (README 의 사전 선언).')
+    print('판정은 K2_prop 로만 한다. K1/K3/K4 는 진단이다 (README 의 사전 등록).')
     print('R > K2 이면 짝 일관성부터 의심할 것.')
 
 
@@ -325,20 +325,20 @@ def stage_direction(p, a):
                     {'RELAX_MODE': 'measure', 'RELAX_APPLY': 'both',
                      'RELAX_CAP': str(a.cap),
                      'RELAX_DUMP_CALLS': str(dumps / (seq + '.pkl'))}, a.gpu)
-        # **관문**: 기록 훅이 추적을 안 건드렸는가. 시퀀스별 평가만으로는
+        # **사전 점검**: 기록 훅이 추적을 안 건드렸는가. 시퀀스별 평가만으로는
         # 결합 값이 안 나와서 64.494 를 확인할 수 없었다 (2026-08-20).
         evaluate(p, 'A_direction')
     finally:
         restore_ann(p)
     print('')
     print('=' * 66)
-    print('관문: 위 COMBINED HOTA 가 exp03 갈래 A 의 64.494 와 같아야 한다.')
+    print('사전 점검: 위 COMBINED HOTA 가 exp03 조건 A 의 64.494 와 같아야 한다.')
     print('다르면 기록 훅이 추적을 바꾼 것이고 덤프가 다른 궤적에서 나온 것이다.')
     print('=' * 66)
     here = Path(__file__).resolve().parent
     # **UTrack 을 경로에 넣어 넘긴다.** 안 넘기면 direction.py 가
     # box_relax 를 최상위로 임포트해 IoU 가 numpy 대체본으로 조용히
-    # 떨어진다 (+1 픽셀 규약 차이로 2e-02 어긋남). 관문이 잡았다.
+    # 떨어진다 (+1 픽셀 규약 차이로 2e-02 어긋남). 사전 점검이 잡았다.
     env = dict(os.environ)
     env['UTRACK_ROOT'] = str(p.utrack)
     env['PYTHONPATH'] = str(p.utrack) + os.pathsep + env.get('PYTHONPATH', '')
@@ -359,7 +359,7 @@ def main():
     ap.add_argument('--dumps', default='/content/exp03_dumps',
                     help='direction: 연관 호출 원자료를 남길 곳')
     ap.add_argument('--alphas', nargs='+', type=float, default=ALPHAS,
-                    help='R 격자. 기본은 사전 선언 격자 %s' % ALPHAS)
+                    help='R 격자. 기본은 사전 등록 격자 %s' % ALPHAS)
     ap.add_argument('--alpha', type=float, default=2.0,
                     help='K1/K2/K3/K4 를 맞출 alpha (R 격자에서 고른 값)')
     ap.add_argument('--dx', type=float)

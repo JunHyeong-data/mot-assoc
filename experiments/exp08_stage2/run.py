@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """실험 8 -- **2단계를 살리면 기준선이 얼마나 움직이는가.**
 
-사전 선언은 `PREREG.md`. 자료보다 먼저 커밋했다 (`0bc1362`).
+사전 등록은 `PREREG.md`. 자료보다 먼저 커밋했다 (`0bc1362`).
 물음은 자체 심사 M3 이 못박았다 (`notes/self_review.md`).
 
 ## 고치는 것 -- 한 줄
@@ -72,7 +72,7 @@ def fuse_patched(cost_matrix, detections):
             ST["mixed"] += 1
             raise RuntimeError(
                 "점수 구간이 섞인 fuse_score 호출 -- 단계 판별이 불가능하다. "
-                "이 방법은 무효이므로 판정하지 말 것 (사전 선언 관문 [0c])")
+                "이 방법은 무효이므로 판정하지 말 것 (사전 등록 사전 점검 [0c])")
         if low:
             ST["s2_calls"] += 1
             if ST["fix"]:
@@ -92,7 +92,7 @@ def lsa_patched(cost_matrix, thresh, use_lap=True):
 
 
 def run(fix):
-    """갈래 하나를 재생하고 HOTA/CLEAR 를 낸다."""
+    """조건 하나를 재생하고 HOTA/CLEAR 를 낸다."""
     reset(fix)
     tag = "alive" if fix else "dead"
     out = OUTROOT / tag
@@ -144,7 +144,7 @@ def main():
     print("=" * 92)
     print("실험 8 -- 2단계를 살리면 기준선이 얼마나 움직이는가")
     print("=" * 92)
-    print("사전 선언 PREREG.md (커밋 0bc1362, 자료보다 먼저)")
+    print("사전 등록 PREREG.md (커밋 0bc1362, 자료보다 먼저)")
     print()
 
     if abs(BASE["match_thresh"] - STAGE2_THRESH) < 1e-9:
@@ -164,9 +164,9 @@ def main():
         matching.fuse_score = ORIG_FUSE
         matching.linear_assignment = ORIG_LSA
 
-    # ---------------- 관문 ----------------
+    # ---------------- 사전 점검 ----------------
     print("=" * 92)
-    print("사전 선언한 관문")
+    print("사전 등록한 사전 점검")
     print("=" * 92)
     ok = True
 
@@ -199,15 +199,15 @@ def main():
 
     if not ok:
         print()
-        print("  ** 관문 실패. 판정하지 않는다 (사전 선언) **")
+        print("  ** 사전 점검 실패. 판정하지 않는다 (사전 등록) **")
         return 1
 
-    # ---------------- 종말점 ----------------
+    # ---------------- 평가지표 ----------------
     print()
     print("=" * 92)
-    print("사전 선언한 종말점")
+    print("사전 등록한 평가지표")
     print("=" * 92)
-    print("%-22s %8s %8s %8s %8s %8s" % ("갈래", "HOTA", "DetA", "AssA", "IDSW", "MOTA"))
+    print("%-22s %8s %8s %8s %8s %8s" % ("조건", "HOTA", "DetA", "AssA", "IDSW", "MOTA"))
     print("-" * 92)
     for r in (dead, alive):
         name = "2단계 죽음 (기존)" if r["tag"] == "dead" else "2단계 **살림**"
@@ -218,7 +218,7 @@ def main():
     unw = float(np.mean([alive["per_hota"][s] - dead["per_hota"][s]
                          for s in dead["per_hota"]]))
     print()
-    print("  [1] 주 종말점  HOTA 차이 = %+.3f  (가중 없는 시퀀스 평균 %+.3f)" % (d1, unw))
+    print("  [1] 주 평가지표  HOTA 차이 = %+.3f  (가중 없는 시퀀스 평균 %+.3f)" % (d1, unw))
     print("  [2] AssA %+.3f,  DetA %+.3f,  IDSW %+.0f,  MOTA %+.3f"
           % (alive["AssA"] - dead["AssA"], alive["DetA"] - dead["DetA"],
              alive["IDSW"] - dead["IDSW"], alive["MOTA"] - dead["MOTA"]))
@@ -235,10 +235,10 @@ def main():
                  dead["per_hota"][s], alive["per_hota"][s],
                  alive["per_hota"][s] - dead["per_hota"][s]))
 
-    # ---------------- 읽는 법 (사전 선언) ----------------
+    # ---------------- 읽는 법 (사전 등록) ----------------
     print()
     print("=" * 92)
-    print("사전 선언한 읽는 법을 그대로 적용한다")
+    print("사전 등록한 읽는 법을 그대로 적용한다")
     print("=" * 92)
     a = abs(d1)
     if a < 0.3:
@@ -250,7 +250,7 @@ def main():
     else:
         print("  > 2.0 => **기존 추적 수준 결과를 전부 다시 재야 한다.**")
     print()
-    print("  어느 쪽이든 exp05/exp06 의 **갈래 간 비교 자체는 무효가 아니다** --")
+    print("  어느 쪽이든 exp05/exp06 의 **조건 간 비교 자체는 무효가 아니다** --")
     print("  같은 트래커 안의 비교였다. 바뀌는 것은 '**ByteTrack 기준선**' 이라는")
     print("  이름을 쓸 수 있는가이다.")
     return 0

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """실험 5 [3단계] -- 캐시된 검출을 트래커에 재생하고 MOT 결과를 쓴다.
 
-**사전 선언은 README. 자료보다 먼저 커밋했다.**
+**사전 등록은 README. 자료보다 먼저 커밋했다.**
 
-갈래마다 검출기를 다시 돌리지 않는다. `cache_detections.py` 가 만든 npz 를
-읽어 **같은 검출**을 모든 갈래에 먹인다. 갈리는 것은 `get_dists` 하나뿐이다.
+조건마다 검출기를 다시 돌리지 않는다. `cache_detections.py` 가 만든 npz 를
+읽어 **같은 검출**을 모든 조건에 먹인다. 갈리는 것은 `get_dists` 하나뿐이다.
 
 ## 훅 지점 (소스 확인)
 
@@ -20,9 +20,9 @@
 
 `STrack.covariance` 는 칼만 상태 (x, y, a, h, ...) 의 공분산이다.
 `covariance[0,0]`, `covariance[1,1]` 이 중심 x, y 의 분산(px^2)이라 검출 쪽과
-단위가 같다. **갈래와 무관하게 이것을 쓴다** (사전 선언 함정 2).
+단위가 같다. **조건과 무관하게 이것을 쓴다** (사전 등록 함정 2).
 
-## 관문 [0b] 를 여기서 잰다
+## 사전 점검 [0b] 를 여기서 잰다
 
 수학 감사 (나): Bures 의 비분리항 `-2*sum sqrt(st*sd)` 는 **st 가 트랙마다
 달라야** 산다. st 가 상수면 순수 열함수가 되어 할당에서 사라진다.
@@ -59,10 +59,10 @@ CACHE = Path("data/exp05")
 OUTDIR = Path("data/exp05/tracks")
 SEQS = ["MOT17-02-FRCNN", "MOT17-04-FRCNN", "MOT17-05-FRCNN", "MOT17-09-FRCNN",
         "MOT17-10-FRCNN", "MOT17-11-FRCNN", "MOT17-13-FRCNN"]
-# wn_* 는 실험 5b (크기 정규화). 사전 선언은 PREREG-norm.md
+# wn_* 는 실험 5b (크기 정규화). 사전 등록은 PREREG-norm.md
 ARMS = ("iou", "w_dfl", "w_size", "w_nms", "wn_dfl", "wn_size")
 
-# ByteTrack 기본값. 갈래 사이에서 **바꾸지 않는다.**
+# ByteTrack 기본값. 조건 사이에서 **바꾸지 않는다.**
 BASE = dict(tracker_type="bytetrack", track_high_thresh=0.25, track_low_thresh=0.1,
             new_track_thresh=0.25, track_buffer=30, match_thresh=0.8,
             fuse_score=True)
@@ -98,7 +98,7 @@ class WTracker(BYTETracker):
         super().__init__(args, frame_rate=frame_rate)
         self.arm = arm
         self.C = C
-        self.cv_log = []          # 관문 [0b]
+        self.cv_log = []          # 사전 점검 [0b]
         self.w2_log = []          # C 보정용 표본
 
     def init_track(self, results, img=None):
@@ -157,13 +157,13 @@ class WTracker(BYTETracker):
                 d = matching.fuse_score(d, detections)
             return d
 
-        # ultralytics STrack 의 상자 속성은 `.xyxy` 다 (`.tlbr` 은 UTrack 쪽 이름).
+        # ultralytics STrack 의 박스 속성은 `.xyxy` 다 (`.tlbr` 은 UTrack 쪽 이름).
         # 트랙 쪽 .xyxy 는 칼만 예측이 반영된 현재 추정값이라 연관에 쓰는 것이 맞다.
         t_box = np.asarray([t.xyxy for t in tracks], dtype=float).reshape(-1, 4)
         d_box = np.asarray([d.xyxy for d in detections], dtype=float).reshape(-1, 4)
         t_var = self._track_var(tracks)
 
-        # 관문 [0b]: 트랙 간 Sigma_t 변동
+        # 사전 점검 [0b]: 트랙 간 Sigma_t 변동
         tr = t_var.sum(-1)
         if len(tr) >= 2 and tr.mean() > 0:
             self.cv_log.append(float(tr.std() / tr.mean()))
@@ -173,8 +173,8 @@ class WTracker(BYTETracker):
         else:                                   # w_dfl / wn_dfl / w_nms
             d_var = np.stack([[d.det_var[0], d.det_var[1]] for d in detections])
 
-        # 함정 1: Sigma_d 의 규모를 트랙 쪽에 맞춘다. 안 맞추면 갈래 간 차이가
-        # 정보가 아니라 규모가 된다. **정규화 갈래도 원래 px^2 좌표에서 한다** --
+        # 함정 1: Sigma_d 의 규모를 트랙 쪽에 맞춘다. 안 맞추면 조건 간 차이가
+        # 정보가 아니라 규모가 된다. **정규화 조건도 원래 px^2 좌표에서 한다** --
         # 절차를 안 바꾼다 (PREREG-norm.md).
         d_var = match_scale(d_var, float(np.mean(t_var.sum(-1))))
 
@@ -247,11 +247,11 @@ def main():
         det = Det(c0["xyxy"][m], c0["conf"][m], np.zeros(int(m.sum())),
                   c0["sxx"][m], c0["syy"][m])
         probe.update(det)
-    print("  (기준선 비용 중앙값은 iou 갈래 실행 중에 수집한다)")
+    print("  (기준선 비용 중앙값은 iou 조건 실행 중에 수집한다)")
 
     for arm in arms:
         print("=" * 66)
-        print("갈래 %s" % arm)
+        print("조건 %s" % arm)
         print("=" * 66)
         # w2 표본을 먼저 모아 C 를 푼다 (한 시퀀스로 충분하다)
         C = 1.0

@@ -6,11 +6,11 @@
     python selftest.py
 
 확인하는 것:
-  [1] measure 갈래가 맨 IoU 와 **완전히** 같은가 (훅이 조용히 바꾸지 않는가)
+  [1] measure 조건이 맨 IoU 와 **완전히** 같은가 (훅이 조용히 바꾸지 않는가)
   [2] 확장이 정답쌍 비용을 낮추고 게이트를 여는가. APPLY=det 과 both 를 대조한다
-  [3] calibrate 가 낸 상수가 세 갈래의 평균 확장량을 실제로 맞추는가
+  [3] calibrate 가 낸 상수가 세 조건의 평균 확장량을 실제로 맞추는가
   [4] 상한(CAP)이 걸리는가
-  [5] 분산이 0 인 상자에서 R 이 기준선으로 되돌아가는가
+  [5] 분산이 0 인 박스에서 R 이 기준선으로 되돌아가는가
 
 출력은 ASCII 로만 쓴다 (Windows cp949 콘솔에서 죽지 않게).
 """
@@ -67,7 +67,7 @@ def scene(seed=0, n_t=40, n_extra=12):
         # 검출의 것으로 갱신되므로 0 이 아니다. 여기서 0 을 주면 APPLY=both 가
         # 조용히 무력화되어 시험이 거짓 통과한다 (실제로 그렇게 한 번 틀렸다).
         tracks.append(Box([x, y, x + w, y + h], var_for(h)))
-        # 대응 검출: 상자 크기의 몇 십 % 만큼 어긋나 있다 (칼만 예측 오차)
+        # 대응 검출: 박스 크기의 몇 십 % 만큼 어긋나 있다 (칼만 예측 오차)
         off = rng.normal(0.0, 0.22, size=2) * np.array([w, h])
         dw, dh = w * rng.uniform(0.9, 1.1), h * rng.uniform(0.9, 1.1)
         dx, dy = x + off[0], y + off[1]
@@ -168,7 +168,7 @@ def main():
         print('    alpha=%-4g R=(%.3f,%.3f)  K1=(%.3f,%.3f)  K2=(%.3f,%.3f)%s'
               % (al, xs[0], ys[0], xs[1], ys[1], xs[2], ys[2], flag))
 
-    # 갈래가 실제로 다른 비용을 내는가. 같으면 실험 자체가 성립하지 않는다.
+    # 조건이 실제로 다른 비용을 내는가. 같으면 실험 자체가 성립하지 않는다.
     al = 2.0
     tx = calibrate.mean_pad_sigma(sx, w, al, cap)
     ty = calibrate.mean_pad_sigma(sy, h, al, cap)
@@ -189,7 +189,7 @@ def main():
     # ---- [3b] 트랙 쪽도 맞는가 - 여태 검증 안 된 절반 ----------------------
     # calibrate.py 는 **검출 쪽** 표본으로만 상수를 푼다. 그런데 APPLY=both 라
     # pad 는 트랙에도 붙는다. 트랙 sigma/크기 분포가 검출과 다르면 검출 쪽만
-    # 맞고 트랙 쪽은 어긋난다 -> 갈래들이 '확장량 일치' 가 아니게 된다.
+    # 맞고 트랙 쪽은 어긋난다 -> 조건들이 '확장량 일치' 가 아니게 된다.
     # 이 실험의 전부가 확장량 일치에 걸려 있으므로 반드시 확인해야 한다.
     print('[3b] track-side expansion (calibrate 는 검출 쪽만 보고 상수를 푼다)')
     al = 2.0
@@ -215,18 +215,18 @@ def main():
     d_spread = max(det_means) - min(det_means)
     t_spread = max(trk_means) - min(trk_means)
     # 검출 쪽 편차는 calibrate 가 0 으로 맞춰 주므로 비율을 찍으면 무의미하다.
-    print('    갈래 간 편차   검출 %.5f (calibrate 가 맞춘 쪽)   트랙 %.5f'
+    print('    조건 간 편차   검출 %.5f (calibrate 가 맞춘 쪽)   트랙 %.5f'
           % (d_spread, t_spread))
-    print('    R 대 K2 트랙 pad 차이 %.2f%%  <- 판정 갈래끼리의 실제 어긋남'
+    print('    R 대 K2 트랙 pad 차이 %.2f%%  <- 판정 조건끼리의 실제 어긋남'
           % (100 * abs(trk_means[0] - trk_means[2]) / max(trk_means[0], 1e-9)))
     # 검출 쪽은 calibrate 가 맞춰 주므로 0 에 가깝다. 트랙 쪽이 그보다 크게
     # 벌어지면 '확장량 일치' 가 트랙에서는 성립하지 않는다는 뜻이다.
     if t_spread > 0.05 * max(trk_means):
-        print('    WARN 트랙 쪽 확장량이 갈래마다 %.1f%% 까지 어긋난다.'
+        print('    WARN 트랙 쪽 확장량이 조건마다 %.1f%% 까지 어긋난다.'
               % (100 * t_spread / max(max(trk_means), 1e-9)))
         print('         이 크기를 결과 해석에 명시할 것 (실패는 아니다).')
     else:
-        print('    OK 트랙 쪽도 갈래 간 편차가 5%% 미만이다.')
+        print('    OK 트랙 쪽도 조건 간 편차가 5%% 미만이다.')
 
     # ---- [4] 상한 --------------------------------------------------------
     m = load(RELAX_MODE='sigma', RELAX_ALPHA=50.0, RELAX_CAP=0.25)

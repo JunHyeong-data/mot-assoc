@@ -42,7 +42,7 @@ HERE = Path(__file__).resolve().parent
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     # **stderr 도 해야 한다.** sys.exit(메시지) 는 stderr 로 나가는데
-    # 거기가 cp949 면 한글이 깨져 무슨 관문에 걸렸는지 못 읽는다.
+    # 거기가 cp949 면 한글이 깨져 무슨 사전 점검에 걸렸는지 못 읽는다.
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(HERE))
 UTRACK = os.environ.get("UTRACK_ROOT") or "/content/UTrack"
@@ -69,7 +69,7 @@ def load_relax(alpha, apply_to="both", cap=1.0):
     # `_get_ious` 의 `from .matching import ious` 가 ImportError 로 떨어져
     # **조용히 `_numpy_ious` 로 대체된다.** 그런데 두 함수는 값이 다르다 --
     # cython `bbox_overlaps` 는 Faster R-CNN 계열의 **+1 픽셀 규약**을 쓴다
-    # (관문이 max|diff| = 2.6e-02 로 잡았다. 잡음이 아니라 다른 함수다).
+    # (사전 점검이 max|diff| = 2.6e-02 로 잡았다. 잡음이 아니라 다른 함수다).
     # 본 실행은 패키지 안에서 돌았으므로 재생도 그래야 한다.
     sys.modules.pop("tracker.box_relax", None)
     return importlib.import_module("tracker.box_relax")
@@ -128,12 +128,12 @@ def accepted(mod, calls, fuse_score, linear_assignment):
 
 
 def gate_ious(mod):
-    """**관문** -- 재생이 본 실행과 **같은 IoU 함수**를 쓰는가.
+    """**사전 점검** -- 재생이 본 실행과 **같은 IoU 함수**를 쓰는가.
 
     `box_relax._get_ious()` 는 패키지 안에서는 cython `bbox_overlaps` 를,
     밖에서는 `_numpy_ious` 를 돌려준다. **그 대체가 조용하다.** 그리고 둘은
     값이 다르다 -- cython 쪽은 Faster R-CNN 계열의 **+1 픽셀 규약**이라
-    전형적 보행자 상자에서 IoU 가 2e-02 쯤 어긋난다. 첫 판 관문이
+    전형적 보행자 박스에서 IoU 가 2e-02 쯤 어긋난다. 첫 판 사전 점검이
     `max|diff| = 2.632e-02` 로 이것을 잡았다.
 
     **값을 비교하지 않고 객체 동일성을 본다.** 값 비교는 "얼마나 다르면
@@ -149,7 +149,7 @@ def gate_ious(mod):
         return False
     fn = mod._get_ious()
     ok = (fn is cy_ious)
-    print("  [관문] 재생의 IoU 가 본 실행의 것인가: %s"
+    print("  [사전 점검] 재생의 IoU 가 본 실행의 것인가: %s"
           % ("OK (cython bbox_overlaps)" if ok
              else "!! **numpy 대체본이다 -- 멈춘다**"))
     if not ok:

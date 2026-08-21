@@ -10,9 +10,9 @@ UTrack 에 벤더링된 TrackEval 의 **HOTA 지표 클래스만** 쓰고, 데�
 
 `mot_challenge_2d_box.py` 의 `get_preprocessed_seq_data` 를 그대로 옮겼다:
 
-  1. 검출(트래커) 상자를 **모든 클래스의 GT** 와 헝가리안으로 맞춘다 (IoU>=0.5)
+  1. 검출(트래커) 박스를 **모든 클래스의 GT** 와 헝가리안으로 맞춘다 (IoU>=0.5)
   2. **distractor 클래스**(person_on_vehicle 2, static_person 7, distractor 8,
-     reflection 12)에 매칭된 트래커 상자를 **제거**한다
+     reflection 12)에 매칭된 트래커 박스를 **제거**한다
   3. GT 는 `zero_marked != 0` 이고 `class == 1`(pedestrian) 인 것만 남긴다
   4. id 를 0..N-1 로 연속 재부여한다
 
@@ -101,7 +101,7 @@ def build_data(seq, arm):
 
         sim = ious_xywh(g_box, t_box)
 
-        # [2] distractor 에 매칭된 트래커 상자 제거
+        # [2] distractor 에 매칭된 트래커 박스 제거
         to_remove = np.array([], int)
         if len(g_ids) and len(t_ids):
             ms = sim.copy()
@@ -154,7 +154,7 @@ def main():
     print("MOTChallenge 전처리 복제: distractor 매칭 제거 + zero_marked/pedestrian 필터")
     print()
     hdr = "%-16s" + "%9s" * 4
-    print(hdr % ("갈래", "HOTA", "DetA", "AssA", "LocA"))
+    print(hdr % ("조건", "HOTA", "DetA", "AssA", "LocA"))
     print("-" * 84)
 
     results = {}
@@ -180,13 +180,13 @@ def main():
         b = 100 * np.mean(results["w_size"][0]["HOTA"])
         print()
         print("=" * 84)
-        print("사전 선언한 판정")
+        print("사전 등록한 판정")
         print("=" * 84)
-        print("  [1] 주 종말점  W-DFL − W-size = %+.3f HOTA" % (a - b))
+        print("  [1] 주 평가지표  W-DFL − W-size = %+.3f HOTA" % (a - b))
         if "iou" in results:
             c = 100 * np.mean(results["iou"][0]["HOTA"])
-            print("  [2] 통로 효과  W-DFL − A(IoU)  = %+.3f HOTA" % (a - c))
-        print("  판정폭 0.3 (exp03 과 같은 자). |차이| < 0.3 이면 '차이 없음'")
+            print("  [2] 경로 효과  W-DFL − A(IoU)  = %+.3f HOTA" % (a - c))
+        print("  판정 기준 0.3 (exp03 과 같은 자). |차이| < 0.3 이면 '차이 없음'")
         v = "DFL 소스가 낫다" if a - b > 0.3 else (
             "크기 소스가 낫다" if a - b < -0.3 else "**차이 없음**")
         print("  => %s" % v)

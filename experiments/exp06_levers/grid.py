@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """실험 6 LOSO [1단계] -- 그리드 표를 만들고 **JSON 으로 남긴다**.
 
-사전 선언은 `PREREG-loso.md`. 자료보다 먼저 커밋했다.
+사전 등록은 `PREREG-loso.md`. 자료보다 먼저 커밋했다.
 
 `headroom.py` 는 표를 print 만 하고 버렸다. `predictors.py` 는 그 값을
 **손으로 옮겨 적었다**(`BEST`, `GAIN`). 재현 경로가 사람 손을 거친다.
@@ -9,7 +9,7 @@
 
 ## 이 스크립트가 하는 검산 둘
 
-**[0] 라벨 대조 (사전 선언한 관문).** 기존 8개 격자에 한정해 argmax 를
+**[0] 라벨 대조 (사전 등록한 사전 점검).** 기존 8개 격자에 한정해 argmax 를
 `predictors.BEST` 와 맞춰본다. **7/7 이 아니면 배관이 틀린 것이니 멈춘다.**
 0.98 은 새 값이라 이 대조에서 뺀다.
 
@@ -35,14 +35,14 @@ if hasattr(sys.stdout, "reconfigure"):
 from headroom import run, OUTROOT                            # noqa: E402
 from replay import SEQS                                      # noqa: E402
 
-# 관문 [0] 대조용 -- **커밋 5b92db6 시점의 기록을 그대로 박아둔다.**
+# 사전 점검 [0] 대조용 -- **커밋 5b92db6 시점의 기록을 그대로 박아둔다.**
 # predictors.py 에서 import 하지 않는다. 그 파일은 라벨이 갱신되므로
-# (0.98 추가로 MOT17-13 이 옮겨갔다) 대조 상대가 같이 움직이면 관문이 무의미해진다.
+# (0.98 추가로 MOT17-13 이 옮겨갔다) 대조 상대가 같이 움직이면 사전 점검이 무의미해진다.
 BEST_OLD = {"MOT17-02-FRCNN": 0.85, "MOT17-04-FRCNN": 0.90, "MOT17-05-FRCNN": 0.75,
             "MOT17-09-FRCNN": 0.75, "MOT17-10-FRCNN": 0.95, "MOT17-11-FRCNN": 0.70,
             "MOT17-13-FRCNN": 0.95}
 
-# 사전 선언한 그리드. 0.98 을 추가한 이유는 PREREG-loso.md 참고
+# 사전 등록한 그리드. 0.98 을 추가한 이유는 PREREG-loso.md 참고
 # (MOT17-10, -13 의 최적이 상단 경계 0.95 에 붙어 있었다).
 GRID = [0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.98]
 OLD_GRID = [0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
@@ -97,7 +97,7 @@ def digests(th):
 
 def main():
     print("=" * 92)
-    print("실험 6 LOSO [1단계] -- 그리드 표 생성. 사전 선언 PREREG-loso.md")
+    print("실험 6 LOSO [1단계] -- 그리드 표 생성. 사전 등록 PREREG-loso.md")
     print("=" * 92)
     print("그리드 %d개: %s" % (len(GRID), GRID))
     print()
@@ -151,14 +151,14 @@ def main():
         if same != checked:
             print("  ** 재생이 결정적이지 않다. 원인을 찾기 전에는 판정하지 말 것 **")
 
-    # ---------------- [0] 라벨 대조 (사전 선언한 관문) ----------------
+    # ---------------- [0] 라벨 대조 (사전 등록한 사전 점검) ----------------
     print()
     print("=" * 92)
-    print("[0] 관문 -- 기존 8개 격자에서 argmax 가 predictors.BEST 와 맞는가")
+    print("[0] 사전 점검 -- 기존 8개 격자에서 argmax 가 predictors.BEST 와 맞는가")
     print("=" * 92)
     # 기록이 없는 시퀀스(신규 추가)나 결과가 없는 시퀀스(캐시 미비)는 대조에서
     # 빼되 **조용히 빼지 않는다.** 빼고 나서 대조할 게 하나도 안 남으면
-    # 관문이 아무것도 검사 못 한 것이므로 통과시키지 않는다.
+    # 사전 점검이 아무것도 검사 못 한 것이므로 통과시키지 않는다.
     ok = checked = 0
     for s in SEQS:
         cand = {t: table[t][s] for t in OLD_GRID if s in table[t]}
@@ -178,16 +178,16 @@ def main():
               % (s, got, exp, "OK" if hit else "** 불일치 **"))
     print("  => %d/%d 일치 (대조한 시퀀스 %d개)" % (ok, checked, checked))
     if checked == 0:
-        print("  ** 대조할 기록이 하나도 없다. 관문이 아무것도 검사하지 못했다 **")
+        print("  ** 대조할 기록이 하나도 없다. 사전 점검이 아무것도 검사하지 못했다 **")
         return 1
     if ok != checked:
-        print("  ** 관문 [0] 실패. 재생 경로가 틀렸다. 여기서 멈춘다 **")
+        print("  ** 사전 점검 [0] 실패. 재생 경로가 틀렸다. 여기서 멈춘다 **")
         return 1
 
     # ---------------- 0.98 이 라벨을 바꿨는가 ----------------
     print()
     print("=" * 92)
-    print("0.98 추가가 라벨을 바꿨는가 (사전 선언에서 예상한 변화)")
+    print("0.98 추가가 라벨을 바꿨는가 (사전 등록에서 예상한 변화)")
     print("=" * 92)
     moved = 0
     for s in SEQS:

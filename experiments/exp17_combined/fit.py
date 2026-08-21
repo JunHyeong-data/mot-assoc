@@ -120,7 +120,7 @@ def main():
 
     # ---------------- [1] LOSO ----------------
     print("=" * 92)
-    print("[1] LOSO -- 주 종말점")
+    print("[1] LOSO -- 주 평가지표")
     print("=" * 92)
     print("%-12s %9s %9s %9s %9s   %6s" % ("held-out", "NLL_A", "NLL_C", "NLL_D",
                                            "D - C", "g"))

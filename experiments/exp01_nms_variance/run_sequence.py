@@ -5,9 +5,9 @@
 묻는 것: NMS 가 억제한 후보들의 표본 산포가, 그 검출이 실제로 얼마나
          부정확한지를 알려주는가.
 
-사전 선언된 주 종말점 (README 참고. 나중에 바꾸지 않는다):
+사전 등록된 주 평가지표 (README 참고. 나중에 바꾸지 않는다):
     rho_primary = Spearman( s_c , 1 - IoU )
-    s_c = 억제된 후보 중심의 표본 표준편차 / 검출 상자 높이 h
+    s_c = 억제된 후보 중심의 표본 표준편차 / 검출 박스 높이 h
     전체 검출 풀에서 하나의 값으로 계산한다. 나머지는 전부 탐색적이다.
 
 판정: rho >= 0.3 진행 / 0.1~0.3 보정 후 재시도 / < 0.1 방향 접음
@@ -15,8 +15,8 @@
 억제 후보를 어떻게 얻나:
     ultralytics 는 NMS 결과만 돌려주고 무엇이 억제됐는지는 버린다.
     그래서 `non_max_suppression` 을 가로채 raw prediction 을 붙잡고,
-    살아남은 상자마다 IoU >= iou_thres 인 raw 후보를 직접 모은다.
-    포크(`DLR-MI/nms_var`)의 커널이 쓰는 정의와 같다 -- 살아남은 상자 자신도
+    살아남은 박스마다 IoU >= iou_thres 인 raw 후보를 직접 모은다.
+    포크(`DLR-MI/nms_var`)의 커널이 쓰는 정의와 같다 -- 살아남은 박스 자신도
     포함되고, 한 후보가 여러 군집에 들어갈 수 있다.
 
     **후보 풀이 NMS 가 본 것보다 원리적으로 조금 넓다.** 여기서는 `person >= CONF`
@@ -29,9 +29,9 @@
     **결과에 영향 없음. 확인 완료.**
 
 좌표계 주의:
-    가로챈 시점의 상자는 letterbox 좌표(640 기준)다. 원본 좌표가 아니다.
-    주 종말점 s_c / h 는 무차원이고 letterbox 는 x,y 를 같은 배율로 줄이므로
-    비율이 보존된다. 따라서 **스칼라 종말점은** letterbox 좌표에서 계산해도 된다.
+    가로챈 시점의 박스는 letterbox 좌표(640 기준)다. 원본 좌표가 아니다.
+    주 평가지표 s_c / h 는 무차원이고 letterbox 는 x,y 를 같은 배율로 줄이므로
+    비율이 보존된다. 따라서 **스칼라 평가지표는** letterbox 좌표에서 계산해도 된다.
 
     그러나 **공분산 Sigma_d 는 다르다.** 오차 eps 는 원본 좌표에서 재므로
     eps^T Sigma_d^-1 eps 를 letterbox 좌표의 Sigma_d 로 계산하면 단위가 어긋나
@@ -61,7 +61,7 @@ LIMIT = int(sys.argv[2]) if len(sys.argv) > 2 else 60
 ROOT = Path("data/MOT17_A/ablation") / SEQ
 
 # 검출기와 NMS 설정을 환경변수로 갈아끼울 수 있게 한다.
-# 기본값은 **사전 선언 당시 그대로**다 -- 관문 판정의 재현성을 위해 바꾸지 않는다.
+# 기본값은 **사전 등록 당시 그대로**다 -- 사전 점검 판정의 재현성을 위해 바꾸지 않는다.
 # 저자 가중치/포크 설정으로 재는 것은 별개의 측정이며 TAG 로 구분해 저장한다.
 MODEL = os.environ.get("EXP01_MODEL", "../BSDsystem/yolov8m.pt")
 CONF = float(os.environ.get("EXP01_CONF", 0.10))   # 낮게 잡아야 억제 후보가 충분히 생긴다
@@ -100,18 +100,18 @@ _orig_nms = ulnms.non_max_suppression
 
 
 def patched_nms(prediction, *a, **kw):
-    """살아남은 상자의 '원본 anchor 인덱스' 를 받아 letterbox 좌표에서 군집을 만든다.
+    """살아남은 박스의 '원본 anchor 인덱스' 를 받아 letterbox 좌표에서 군집을 만든다.
 
-    NMS 출력 상자는 이미 원본 이미지 좌표로 스케일되어 있고 raw prediction 은
+    NMS 출력 박스는 이미 원본 이미지 좌표로 스케일되어 있고 raw prediction 은
     letterbox 좌표다. 둘을 직접 IoU 로 맞추면 좌표계가 어긋나 후보가 0 개가 된다.
     return_idxs=True 가 주는 인덱스를 쓰면 그 문제가 사라진다.
     """
     want = kw.get("return_idxs", False)
 
-    # **호출 전에 복사한다.** non_max_suppression 은 raw prediction 의 상자를
-    # 제자리에서 xywh -> xyxy 로 바꾼다. 호출 뒤에 읽으면 이미 xyxy 인데
-    # 거기에 xywh2xyxy 를 또 걸게 되어 상자가 3배로 부푼다. 오류 없이 조용히
-    # 틀리고, 부푼 상자는 서로 다 겹쳐 후보 풀이 통째로 오염된다.
+    # **호출 전에 복사한다.** non_max_suppression 은 raw prediction 의 박스를
+    # in-place 로 xywh -> xyxy 로 바꾼다. 호출 뒤에 읽으면 이미 xyxy 인데
+    # 거기에 xywh2xyxy 를 또 걸게 되어 박스가 3배로 부푼다. 오류 없이 조용히
+    # 틀리고, 부푼 박스는 서로 다 겹쳐 후보 풀이 통째로 오염된다.
     # (2026-08-16 실험 4 에서 발견. 그전 결과는 이 버그의 영향을 받았다.)
     _p = prediction[0] if isinstance(prediction, (list, tuple)) else prediction
     _snap = (_p[0] if _p.ndim == 3 else _p).detach().clone()
@@ -129,7 +129,7 @@ def patched_nms(prediction, *a, **kw):
         kept = boxes[idx]
 
         # **배율은 여기서 잴 수 없다.** ultralytics 는 NMS 가 돌아온 *뒤에*
-        # construct_results 에서 scale_boxes 를 건다. 그래서 이 시점의 out 상자는
+        # construct_results 에서 scale_boxes 를 건다. 그래서 이 시점의 out 박스는
         # 아직 letterbox 좌표이고, kept 와 나누면 배율이 언제나 정확히 1.0 이 나온다.
         # 오류도 경고도 없이 조용히 1.0 이다. (2026-08-17 발견)
         # 배율은 아래 주 루프에서 r.boxes.xyxy(원본 좌표)와 대조해 잰다.
@@ -138,7 +138,7 @@ def patched_nms(prediction, *a, **kw):
         if len(kept) and len(pool_box):
             M = iou_mat(kept, pool_box)
             for i in range(len(kept)):
-                sel = M[i] >= IOU_NMS                # NMS 가 이 상자로 억제한 것들
+                sel = M[i] >= IOU_NMS                # NMS 가 이 박스로 억제한 것들
                 c = pool_box[sel]
                 h = max(kept[i, 3] - kept[i, 1], 1e-6)
                 if len(c) >= MIN_CAND:
@@ -212,7 +212,7 @@ for k, ip in enumerate(imgs):
         continue
 
     # letterbox -> 원본 배율. det 는 원본 좌표, stats 의 h 는 letterbox 좌표이고
-    # 둘은 **같은 상자**다. 그러니 높이 비가 곧 배율이다. 가장자리 상자는
+    # 둘은 **같은 박스**다. 그러니 높이 비가 곧 배율이다. 가장자리 박스는
     # scale_boxes 가 이미지 경계로 잘라내므로 개별 비가 어긋날 수 있다 -> 중앙값.
     hl = np.array([s[3] for s in stats], dtype=float)
     ho = det[:, 3] - det[:, 1]
@@ -281,7 +281,7 @@ x, y, h_ = sc[ok], err[ok], hh[ok]
 rho, p = spearmanr(x, y)
 
 print("=" * 72)
-print("[2] 주 종말점")
+print("[2] 주 평가지표")
 print("=" * 72)
 print(f"  rho_primary = Spearman(s_c, 1-IoU) = {rho:+.4f}   (p={p:.3g}, n={ok.sum()})")
 
@@ -321,12 +321,12 @@ rx, ry, rh = rank(x), rank(y), rank(h_)
 rx_ = rx - np.polyval(np.polyfit(rh, rx, 1), rh)
 ry_ = ry - np.polyval(np.polyfit(rh, ry, 1), rh)
 prho = np.corrcoef(rx_, ry_)[0, 1]
-print(f"  상자높이 h 통제 편상관      = {prho:+.4f}")
+print(f"  박스높이 h 통제 편상관      = {prho:+.4f}")
 print(f"  (원시 rho 와 차이 {abs(prho-rho):.4f} -- 이만큼이 크기 교란이다)")
 print()
 
 print("=" * 72)
-print("[3] 판정 (사전 선언 기준)")
+print("[3] 판정 (사전 등록 기준)")
 print("=" * 72)
 v = abs(rho)
 verdict = ("신호 있음. 다음 단계 진행" if v >= 0.3 else

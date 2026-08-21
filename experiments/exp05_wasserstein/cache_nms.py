@@ -3,7 +3,7 @@
 
 ## 왜 필요한가
 
-`replay.py` 의 `w_nms` 갈래와 실험 15 가 이 파일을 읽는데 **아무도 만든 적이 없다.**
+`replay.py` 의 `w_nms` 조건과 실험 15 가 이 파일을 읽는데 **아무도 만든 적이 없다.**
 그래서 실험 15 가 **DFL 소스만** 재고 "NMS 는 미측정" 을 한계로 적었다.
 
 exp01 은 **NMS 가 위치오차를 더 잘 짚는다**고 했다 (편상관 +0.322 대 DFL +0.151).
@@ -17,8 +17,8 @@ exp01 은 **NMS 가 위치오차를 더 잘 짚는다**고 했다 (편상관 +0.
 
 ## 이 코드가 조용히 틀리는 두 자리 -- 철회 8·9번이 여기서 났다
 
-1. **NMS 가 입력을 제자리에서 바꾼다** (`xywh -> xyxy`). 호출 **뒤에** 읽으면
-   이미 xyxy 인데 `xywh2xyxy` 를 또 걸어 상자가 3배로 부푼다.
+1. **NMS 가 입력을 in-place 로 바꾼다** (`xywh -> xyxy`). 호출 **뒤에** 읽으면
+   이미 xyxy 인데 `xywh2xyxy` 를 또 걸어 박스가 3배로 부푼다.
    **-> 호출 전에 복사한다.**
 2. **좌표계가 둘이다.** raw prediction 은 letterbox, `r.boxes.xyxy` 는 원본이다.
    ultralytics 는 NMS 가 **돌아온 뒤** `scale_boxes` 를 건다. 그래서 이 시점에
@@ -88,7 +88,7 @@ def iou_mat(a, b):
 
 
 def patched_nms(prediction, *a, **kw):
-    # **[함정 1] 호출 전에 복사한다.** 아래 원본 호출이 prediction 을 제자리에서
+    # **[함정 1] 호출 전에 복사한다.** 아래 원본 호출이 prediction 을 in-place 로
     # xywh -> xyxy 로 바꾼다. 뒤에 읽으면 이미 바뀐 것에 또 변환을 건다.
     _p = prediction[0] if isinstance(prediction, (list, tuple)) else prediction
     _snap = (_p[0] if _p.ndim == 3 else _p).detach().clone()
@@ -109,7 +109,7 @@ def patched_nms(prediction, *a, **kw):
         if len(kept) and len(pool_box):
             M = iou_mat(kept, pool_box)
             for i in range(len(kept)):
-                c = pool_box[M[i] >= IOU_NMS]         # 이 상자가 억제한 후보들
+                c = pool_box[M[i] >= IOU_NMS]         # 이 박스가 억제한 후보들
                 ncand[i] = len(c)
                 if len(c) >= MIN_CAND:
                     cx = (c[:, 0] + c[:, 2]) / 2

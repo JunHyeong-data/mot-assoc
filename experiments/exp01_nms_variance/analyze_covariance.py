@@ -3,7 +3,7 @@
 스칼라 산포 대신 공분산 Sigma_d 로 묻는다.
 
 왜 바꾸나
-  run_sequence.py 의 주 종말점은 스칼라 s_c 를 상자높이 h 로 나눈 값이다.
+  run_sequence.py 의 주 평가지표는 스칼라 s_c 를 박스높이 h 로 나눈 값이다.
   h 로 나누는 정규화가 크기 교란을 다 걷어내는지 확실하지 않다.
 
   공분산을 쓰면 그 걱정이 원리적으로 사라진다. Sigma_d 는 오차 eps 와 단위가
@@ -13,23 +13,23 @@
     대부분이 크기 교란이었다" 고 적혀 있었다. **그 0.044 는 NMS in-place 버그의
     산물이고 고친 값은 +0.336 이다.** 크기 교란은 0.119 뿐이다. 공분산으로 가는
     동기는 남지만("무차원이라 깨끗하다"), '스칼라가 실패했으니 갈아탄다' 는
-    서술은 틀렸다. 스칼라 종말점은 관문을 통과했다.
+    서술은 틀렸다. 스칼라 평가지표는 사전 점검을 통과했다.
 
   이론과도 이어진다. mahalanobis_vs_bhattacharyya.py 에서 검출 불확실성이
-  할당에 도달하는 유일한 통로가 0.5 ln|(Sigma_t + Sigma_d)/2| 였다. 필요한 것은
+  할당에 도달하는 유일한 경로가 0.5 ln|(Sigma_t + Sigma_d)/2| 였다. 필요한 것은
   스칼라 산포가 아니라 Sigma_d 자체다.
 
 결정적 질문
   개체별 Sigma_d 가 상수 Sigma 보다 실제 오차를 잘 설명하는가?
-  상수 Sigma_d 는 순수 행상수라 통로 기여가 0 이다 (assignment_invariance.py).
-  따라서 이 우도 비교가 곧 '통로에 실제 정보가 흐르는가' 이다.
+  상수 Sigma_d 는 순수 행상수라 경로 기여가 0 이다 (assignment_invariance.py).
+  따라서 이 우도 비교가 곧 '경로에 실제 정보가 흐르는가' 이다.
 
   진다면: NMS 후보 공분산은 쓸 수 없는 불확실성 소스다. 다른 소스를 찾아야 한다.
 
 사용법:
     python experiments/exp01_nms_variance/analyze_covariance.py [시퀀스명] [TAG]
 
-    TAG 는 run_all.py 의 갈래 접미사다 (빈칸 | -m60 | -fork).
+    TAG 는 run_all.py 의 조건 접미사다 (빈칸 | -m60 | -fork).
         analyze_covariance.py MOT17-02-FRCNN -fork
 """
 import sys
@@ -128,7 +128,7 @@ bxx = np.full(n, Sb[0, 0]); bxy = np.full(n, Sb[0, 1]); byy = np.full(n, Sb[1, 1
 kB = best_scale(bxx, bxy, byy, e)
 nllB = nll(bxx * kB, bxy * kB, byy * kB, e).mean()
 
-# 모형 C: 상자 크기만 쓰는 상수 (Sigma = c * h^2 * I). '크기만으로도 되는가'
+# 모형 C: 박스 크기만 쓰는 상수 (Sigma = c * h^2 * I). '크기만으로도 되는가'
 hs = hh[ok] ** 2
 cxx = hs.copy(); cxy = np.zeros(n); cyy = hs.copy()
 kC = best_scale(cxx, cxy, cyy, e)
@@ -138,10 +138,10 @@ print(f"  {'모형':<34}{'평균 NLL':>12}{'상수 대비':>12}")
 print("  " + "-" * 58)
 print(f"  {'A. 개체별 Sigma_d (NMS 후보)':<34}{nllA:>12.4f}{nllA - nllB:>+12.4f}")
 print(f"  {'B. 상수 Sigma (기준선)':<34}{nllB:>12.4f}{0.0:>+12.4f}")
-print(f"  {'C. 상자크기만 (Sigma = k h^2 I)':<34}{nllC:>12.4f}{nllC - nllB:>+12.4f}")
+print(f"  {'C. 박스크기만 (Sigma = k h^2 I)':<34}{nllC:>12.4f}{nllC - nllB:>+12.4f}")
 print()
 print("  NLL 이 낮을수록 좋다. A 가 B 보다 낮아야 '검출별 불확실성에 정보가 있다'.")
-print("  A 가 C 보다도 낮아야 '상자 크기 이상의 정보가 있다'. 이게 진짜 관문이다.")
+print("  A 가 C 보다도 낮아야 '박스 크기 이상의 정보가 있다'. 이게 진짜 사전 점검이다.")
 print()
 
 # 프레임 블록 부트스트랩으로 NLL 차이의 CI
@@ -178,7 +178,7 @@ def rob_scale(S_xx, S_xy, S_yy, e):
 rows_ = []
 for lab, (Sx, Sy, Sxy_) in (("A. 개체별 Sigma_d", (sxx, syy, sxy)),
                             ("B. 상수 Sigma", (bxx, byy, bxy)),
-                            ("C. 상자크기만", (cxx, cyy, cxy))):
+                            ("C. 박스크기만", (cxx, cyy, cxy))):
     k = rob_scale(Sx, Sxy_, Sy, e)
     rows_.append((lab, nll(Sx * k, Sxy_ * k, Sy * k, e).mean()))
 

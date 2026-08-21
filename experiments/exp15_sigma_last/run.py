@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""실험 15 -- **σ 의 마지막 시험.** 통로와 무관하게, 연관 오류를 짚는가.
+"""실험 15 -- **σ 의 마지막 시험.** 경로와 무관하게, 연관 오류를 짚는가.
 
 두 소스를 같은 절차로 잰다:
     python experiments/exp15_sigma_last/run.py         # DFL 분포 분산
     python experiments/exp15_sigma_last/run.py -nms    # NMS 후보 산포
 
-사전 선언은 `PREREG.md` (자료보다 먼저 커밋).
+사전 등록은 `PREREG.md` (자료보다 먼저 커밋).
 
 exp01 은 σ 가 **위치 오차**를 예측한다고 했다. 우리는 그것이 **연관 오류**로
-옮겨간다고 **가정하고** 통로 넷을 갈랐다. 그 가정을 이제 직접 잰다.
+옮겨간다고 **가정하고** 경로 넷을 갈랐다. 그 가정을 이제 직접 잰다.
 
 단위는 **1단계에서 채택된 (트랙, 검출) 쌍**이고 n 이 수만이라
 **검정력 문제가 없다** (CLAUDE.md 규칙 6).
@@ -35,7 +35,7 @@ from replay import WTracker, load, SEQS, BASE                   # noqa: E402
 from run import det_gt_ids, gt_by_frame, GDet                   # noqa: E402
 from stage_util import which_stage, stage_thresh                # noqa: E402
 
-# 소스 갈래. 기본은 DFL(캐시 기본 npz), "-nms" 면 NMS 후보 산포.
+# 소스 조건. 기본은 DFL(캐시 기본 npz), "-nms" 면 NMS 후보 산포.
 SRC = "w_nms" if "-nms" in sys.argv else "iou"
 SRC_NAME = "NMS 후보 산포" if SRC == "w_nms" else "DFL 분포 분산"
 
@@ -65,7 +65,7 @@ class ProbeTracker(WTracker):
             return d
         stage = which_stage(tracks)
         CALLS[stage] = CALLS.get(stage, 0) + 1
-        if stage != 1:                       # 3단계는 사전 선언 범위 밖이다
+        if stage != 1:                       # 3단계는 사전 등록 범위 밖이다
             return d
         m, _, _ = matching.linear_assignment(d, stage_thresh(self.args, stage))
         # **"고칠 수 있음" 은 그 단계가 실제로 본 검출로만 판단한다.**
@@ -124,9 +124,9 @@ def partial_corr(x, y, z):
 
 def main():
     print("=" * 92)
-    print("실험 15 -- σ 의 마지막 시험. 통로와 무관하게 연관 오류를 짚는가")
+    print("실험 15 -- σ 의 마지막 시험. 경로와 무관하게 연관 오류를 짚는가")
     print("=" * 92)
-    print("사전 선언 PREREG.md (자료보다 먼저)   **소스 = %s**" % SRC_NAME)
+    print("사전 등록 PREREG.md (자료보다 먼저)   **소스 = %s**" % SRC_NAME)
     print("exp01 은 σ 가 **위치 오차**를 예측한다고 했다. **연관 오류**는 안 쟀다.")
     print()
 
@@ -164,7 +164,7 @@ def main():
     for s in sorted(k for k in CALLS if k is not None):
         print("  %d단계 %6d 회 (%.1f%%)%s"
               % (s, CALLS[s], 100.0 * CALLS[s] / tot,
-                 "  <- 라벨에 쓴 것" if s == 1 else "  <- 사전 선언 범위 밖. 뺐다"))
+                 "  <- 라벨에 쓴 것" if s == 1 else "  <- 사전 등록 범위 밖. 뺐다"))
     if None in CALLS:
         print("  판별불가(빈 목록) %d 회 -- 건너뛰었다" % CALLS[None])
     print("  **예전 판은 이 둘을 섞어서 세었다.**")
@@ -182,20 +182,20 @@ def main():
     bad = lab == "틀림_고칠수있음"
     print()
     print("=" * 92)
-    print("[1] 주 종말점 -- AUC(σ -> 틀림(고칠 수 있음))")
+    print("[1] 주 평가지표 -- AUC(σ -> 틀림(고칠 수 있음))")
     print("=" * 92)
     a_sig = auc(sig[bad], sig[ok])
     print("  옳음 %d 건 vs 틀림(고칠수있음) %d 건" % (ok.sum(), bad.sum()))
     print("  **AUC(σ) = %.4f**" % a_sig)
 
-    # [3] 상자 크기 모형 sigma_C 로 같은 것
-    sig_c = hgt / 2.0                      # C: 공분산이 상자 크기에 비례
+    # [3] 박스 크기 모형 sigma_C 로 같은 것
+    sig_c = hgt / 2.0                      # C: 공분산이 박스 크기에 비례
     a_c = auc(sig_c[bad], sig_c[ok])
-    print("  AUC(상자 크기 σ_C) = %.4f   <- [3] 기준 비교" % a_c)
+    print("  AUC(박스 크기 σ_C) = %.4f   <- [3] 기준 비교" % a_c)
 
     print()
     print("=" * 92)
-    print("[2] 상자 높이를 통제한 편상관 (exp01 과 같은 자)")
+    print("[2] 박스 높이를 통제한 편상관 (exp01 과 같은 자)")
     print("=" * 92)
     sel = ok | bad
     pc = partial_corr(sig[sel], bad[sel].astype(float), hgt[sel])
@@ -203,18 +203,18 @@ def main():
 
     print()
     print("=" * 92)
-    print("판정 -- 사전 선언한 기준")
+    print("판정 -- 사전 등록한 기준")
     print("=" * 92)
     if a_sig >= 0.60:
         print("  AUC %.4f >= 0.60 => **σ 가 연관 오류를 짚는다.**" % a_sig)
-        print("     통로를 잘못 골랐던 것이고 **다시 볼 값어치가 있다**")
+        print("     경로를 잘못 골랐던 것이고 **다시 볼 값어치가 있다**")
     elif a_sig >= 0.55:
         print("  0.55 <= AUC %.4f < 0.60 => 약하게 짚는다." % a_sig)
         print("     exp01 의 0.32 가 연관까지는 잘 안 옮겨간다")
     else:
         print("  AUC %.4f < 0.55 => **σ 는 연관 오류에 정보가 없다.**" % a_sig)
-        print("     어느 통로에 넣어도 안 된다. **σ 질문이 완전히 닫힌다.**")
-        print("     통로 넷의 음성이 '통로가 나빴다' 가 아니라")
+        print("     어느 경로에 넣어도 안 된다. **σ 질문이 완전히 닫힌다.**")
+        print("     경로 넷의 음성이 '경로가 나빴다' 가 아니라")
         print("     **'애초에 옮길 정보가 없었다'** 로 설명된다")
     print()
     print("=" * 92)
@@ -237,7 +237,7 @@ def main():
 
     if a_c > a_sig:
         print()
-        print("  [3] 상자 크기가 σ 를 이긴다 (%.4f > %.4f)." % (a_c, a_sig))
+        print("  [3] 박스 크기가 σ 를 이긴다 (%.4f > %.4f)." % (a_c, a_sig))
         print("      exp1f 의 만장일치와 같은 이야기다")
     return 0
 

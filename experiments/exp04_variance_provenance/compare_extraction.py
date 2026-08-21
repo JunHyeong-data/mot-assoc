@@ -2,7 +2,7 @@
 """
 실험 4 -- 포크의 분산과 우리 분산을 같은 자로 잰다.
 
-**왜 필요한가.** 실험 3 의 measure 실행에서 포크 `nms_var` 의 sigma 가 상자 크기와
+**왜 필요한가.** 실험 3 의 measure 실행에서 포크 `nms_var` 의 sigma 가 박스 크기와
 거의 무관했다 (corr(s_x, w) = +0.123). 그런데 실험 1 에서 우리가 뽑은 분산은
 크기 교란이 지배적이었다. 둘이 갈리는 이유가
 
@@ -14,8 +14,8 @@
 
 **포크의 분산 정의는 소스로 확인했다** (DLR-MI/nms_var, `src/cuda/nms_var_kernel.cu`):
 
-  - 살아남은 상자마다 **IoU >= iou_thres 인 후보 전부**가 기여한다.
-    **살아남은 상자 자신도 포함**된다.
+  - 살아남은 박스마다 **IoU >= iou_thres 인 후보 전부**가 기여한다.
+    **살아남은 박스 자신도 포함**된다.
   - 가중치 없음. 점수로도 IoU 로도 가중하지 않는다.
   - xywh(중심x, 중심y, 폭, 높이) 각각의 **표본분산**, 분모는 **(n-1)**.
     n=1 이면 0.
@@ -45,7 +45,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from ultralytics import YOLO                                   # noqa: E402
 
-# 갈래별 설정. exp01 은 실험 1 이 쓴 값, fork* 는 UTrack 의 track_ablation_17.yaml.
+# 조건별 설정. exp01 은 실험 1 이 쓴 값, fork* 는 UTrack 의 track_ablation_17.yaml.
 ARMS = {
     'exp01':      dict(conf=0.10, iou=0.45, imgsz=640,          weights=None),
     'forkparams': dict(conf=0.01, iou=0.70, imgsz=(800, 1440),  weights=None),
@@ -76,9 +76,9 @@ def patch(mod):
         # ultralytics 는 예측을 [tensor, aux] 리스트로 넘긴다. 첫 원소가
         # (batch, 4+nc, n) 이고 행은 **xywh** 다.
         #
-        # **반드시 호출 전에 복사해야 한다.** non_max_suppression 은 상자를
-        # 제자리에서 xyxy 로 바꾼다. 뷰를 들고 있으면 호출 뒤에는 이미 xyxy 이고,
-        # 거기에 xywh2xyxy 를 또 걸면 상자가 3배로 부풀어 조용히 틀린 값이 나온다.
+        # **반드시 호출 전에 복사해야 한다.** non_max_suppression 은 박스를
+        # in-place 로 xyxy 로 바꾼다. 뷰를 들고 있으면 호출 뒤에는 이미 xyxy 이고,
+        # 거기에 xywh2xyxy 를 또 걸면 박스가 3배로 부풀어 조용히 틀린 값이 나온다.
         # (실제로 그렇게 한 번 틀렸다. E[w] 가 1010 px 로 나왔다.)
         t = prediction[0] if isinstance(prediction, (list, tuple)) else prediction
         snap = t[0].detach().cpu().float().clone()
@@ -115,7 +115,7 @@ def iou_matrix(a, b):
 
 
 def frame_sigma(pred, kept_idx, conf, iou_thres):
-    """포크 커널과 같은 정의로 살아남은 상자별 xywh 표본분산을 낸다.
+    """포크 커널과 같은 정의로 살아남은 박스별 xywh 표본분산을 낸다.
 
     pred: (4+nc, n) letterbox 좌표의 raw 예측.
     반환: (m,4) var_xywh, (m,4) xywh   -- letterbox 좌표
@@ -156,7 +156,7 @@ def summarize(name, var, xywh, gain):
     sx, sy, w, h = sx[ok], sy[ok], w[ok], h[ok]
 
     print('== %s ==' % name)
-    print('  boxes %d   var 가 0 인 상자 %.1f%%'
+    print('  boxes %d   var 가 0 인 박스 %.1f%%'
           % (sx.size, 100 * np.mean((sx <= 0) & (sy <= 0))))
     print('  E[s_x] %.4f px (sd %.4f)   E[s_y] %.4f px (sd %.4f)'
           % (sx.mean(), sx.std(), sy.mean(), sy.std()))
@@ -198,7 +198,7 @@ def main():
 
     mod, where = find_nms_module()
     print('non_max_suppression 위치: %s' % where)
-    print('갈래 %s  conf=%.2f iou=%.2f imgsz=%s  가중치=%s  프레임=%d'
+    print('조건 %s  conf=%.2f iou=%.2f imgsz=%s  가중치=%s  프레임=%d'
           % (a.arm, cfg['conf'], cfg['iou'], cfg['imgsz'], a.weights, len(imgs)))
     patch(mod)
 
@@ -229,7 +229,7 @@ def main():
             print('  ... %d/%d 프레임' % (k + 1, len(imgs)))
 
     if not all_var:
-        sys.exit('ERROR 상자를 하나도 못 모았다')
+        sys.exit('ERROR 박스를 하나도 못 모았다')
     var, box, sc = (np.concatenate(all_var), np.concatenate(all_box),
                     np.concatenate(all_sc))
     if a.min_score > 0:
@@ -238,7 +238,7 @@ def main():
         keep = sc >= a.min_score
         print('점수 >= %.2f 로 %d -> %d 개' % (a.min_score, sc.size, keep.sum()))
         var, box = var[keep], box[keep]
-    summarize('우리 추출 · 갈래 %s (min_score %.2f, %s)'
+    summarize('우리 추출 · 조건 %s (min_score %.2f, %s)'
               % (a.arm, a.min_score, a.seq),
               var, box, gain)
 

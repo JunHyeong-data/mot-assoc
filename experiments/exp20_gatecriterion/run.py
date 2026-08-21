@@ -113,7 +113,7 @@ def scan(source):
 
 
 def shape_of(curve, which):
-    """곡선이 단조인가 -- 부수 종말점 [3].
+    """곡선이 단조인가 -- 부수 평가지표 [3].
 
     exp03 에서 채택률이 **뒤집힌 U 자**였다. 이 파이프라인에서도 그런지는
     안 쟀으므로 훑기가 주는 것을 그대로 적는다.
@@ -200,7 +200,7 @@ def main():
         print("[훑기] %s" % src, flush=True)
         curves[src] = scan(src)
 
-    # ---- 부수 종말점 [3] ----
+    # ---- 부수 평가지표 [3] ----
     print()
     print("=" * 92)
     print("[3] 채택률 곡선의 모양 -- exp03 에서 뒤집힌 U 자였다. 여기서는?")
@@ -251,7 +251,7 @@ def main():
     print("판정 -- 자료 보기 전에 정한 읽는 법 (PREREG.md 보정 3)")
     print("=" * 92)
     if (2, "nms") not in out:
-        print("  **[1] 주 종말점을 얻지 못했다** -- 기준 C 가 NMS 에 정의되지 않는다.")
+        print("  **[1] 주 평가지표를 얻지 못했다** -- 기준 C 가 NMS 에 정의되지 않는다.")
         print("     %s" % notes.get((2, "nms"), ""))
         print()
         print("     **이것이 결과다**: 채택률을 맞추는 대조는 NMS 게이팅에")

@@ -12,7 +12,7 @@
 - `external/UTrack` 을 어떻게 구하는지는 `exp02_utrack_replication/colab_setup.md`
   **45번째 줄의 콜랩 셀 안에만** 있었다
 
-이 스크립트가 그 간극을 메운다. **판정 스크립트가 관문을 먼저 두는 것과 같은 정신**이다.
+이 스크립트가 그 간극을 메운다. **판정 스크립트가 사전 점검을 먼저 두는 것과 같은 정신**이다.
 
 사용법:
     python check_setup.py

@@ -13,7 +13,7 @@
   (b) exp12 `run.py` 의 [4] 표. 기록은 `notes/progress.md`
 
 **거리 함수는 소스를 갈라 둘로 그린다** -- 예전에 -4.98 하나만 그렸는데
-그건 `wn_size`, 즉 **박스 크기 소스**다. 검출기 sigma 갈래는 `wn_dfl` 이고
+그건 `wn_size`, 즉 **박스 크기 소스**다. 검출기 sigma 조건은 `wn_dfl` 이고
 52.10 - 61.00 = **-8.90** 이다 (심사 2차에서 잡음).
 
 사용법:
@@ -35,7 +35,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 SRC = Path("data/exp14/recovery.json")
 
-# (라벨, 값, 갈래). exp12 run.py 의 [4] 와 같아야 한다 -- 아래에서 검산한다.
+# (라벨, 값, 조건). exp12 run.py 의 [4] 와 같아야 한다 -- 아래에서 검산한다.
 TRIED = [
     ("association ceiling (oracle)", +3.122, "ceiling"),
     ("threshold oracle (upper bound)", +0.892, "oracle"),

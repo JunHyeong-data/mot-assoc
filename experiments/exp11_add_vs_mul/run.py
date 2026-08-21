@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """실험 11 (E1) -- **가산 대 곱, 실데이터에서.**
 
-사전 선언은 `PREREG.md` (커밋 `2ac0db4`, 자료보다 먼저).
+사전 등록은 `PREREG.md` (커밋 `2ac0db4`, 자료보다 먼저).
 
 원고 2절의 설계 제약을 합성에서 실측으로 옮긴다:
 
@@ -33,7 +33,7 @@ from replay import WTracker, Det, load, SEQS, BASE             # noqa: E402
 import evaluate as EV                                          # noqa: E402
 from tracker.eval.collections.hota import HOTA                 # noqa: E402
 
-TARGET_DELTA = 0.20        # add 의 목표 평균 |Δcost| (사전 선언)
+TARGET_DELTA = 0.20        # add 의 목표 평균 |Δcost| (사전 등록)
 MIN_CALLS = 1000
 OUT = Path("data/exp11/tracks")
 
@@ -51,7 +51,7 @@ def unit(dets):
 
 
 def perturb(base, u):
-    """add 와 mul 을 만든다. 섭동 크기를 서로 맞춘다 (사전 선언 [0b])."""
+    """add 와 mul 을 만든다. 섭동 크기를 서로 맞춘다 (사전 등록 [0b])."""
     a = TARGET_DELTA / max(float(np.mean(u)), 1e-9)
     add = base + a * u[None, :]
     d_add = float(np.mean(np.abs(add - base)))
@@ -68,7 +68,7 @@ def solve(cost, thresh):
 
 
 class E1Tracker(WTracker):
-    """1단계 비용에서 세 갈래를 나란히 풀어 기록한다. 진행은 base 로."""
+    """1단계 비용에서 세 조건을 나란히 풀어 기록한다. 진행은 base 로."""
 
     def get_dists(self, tracks, detections):
         base = super().get_dists(tracks, detections)
@@ -159,12 +159,12 @@ def main():
     print("=" * 92)
     print("실험 11 (E1) -- 가산 대 곱, 실데이터에서")
     print("=" * 92)
-    print("사전 선언 PREREG.md (커밋 2ac0db4, 자료보다 먼저)")
+    print("사전 등록 PREREG.md (커밋 2ac0db4, 자료보다 먼저)")
     print("한 번의 재생 안에서 매 연관 호출마다 base/add/mul 셋을 나란히 푼다.")
     print()
 
     replay(E1Tracker, "base")
-    # 감사 정정: 사전 선언 범위는 **1단계**다. 3단계 호출은 빼고 판정한다.
+    # 감사 정정: 사전 등록 범위는 **1단계**다. 3단계 호출은 빼고 판정한다.
     tot = sum(CALLS.values())
     print("  [진단] get_dists 호출: " + ",  ".join(
         "%s단계 %d (%.1f%%)" % (k, v, 100.0 * v / tot) for k, v in sorted(
@@ -177,7 +177,7 @@ def main():
         return 1
 
     print("=" * 92)
-    print("사전 선언한 관문")
+    print("사전 등록한 사전 점검")
     print("=" * 92)
     da = float(np.mean([r["d_add"] for r in L]))
     dm = float(np.mean([r["d_mul"] for r in L]))
@@ -196,7 +196,7 @@ def main():
     print("  [0c] 연관 호출 %d 건  %s" % (len(L), "OK" if g0c else "** 1000 미만 **"))
     if not ok:
         print()
-        print("  ** 관문 실패. 판정하지 않는다 **")
+        print("  ** 사전 점검 실패. 판정하지 않는다 **")
         return 1
 
     le = [r for r in L if r["le"]]
@@ -207,7 +207,7 @@ def main():
 
     print()
     print("=" * 92)
-    print("사전 선언한 종말점")
+    print("사전 등록한 평가지표")
     print("=" * 92)
     e1 = pct([r["same_add"] for r in le])
     e2 = pct([r["same_add"] for r in gt])
@@ -233,7 +233,7 @@ def main():
 
     print()
     print("=" * 92)
-    print("판정 -- 사전 선언한 읽는 법")
+    print("판정 -- 사전 등록한 읽는 법")
     print("=" * 92)
     if abs(e1 - 100.0) < 1e-9:
         print("  [1] **정확히 100%%.** 가산은 N<=M 에서 할당 기여가 0 이다.")
@@ -262,7 +262,7 @@ def main():
             print("      => **최적성이 실제로 깨졌다. 명제나 구현이 틀렸다.**")
             print("         원고 2절을 고쳐야 한다")
     if e4 > 0:
-        print("  [4] 임계값 통로가 살아 있다 -- 할당은 같은데 채택이 %.2f%% 에서 다르다" % e4)
+        print("  [4] 임계값 경로가 살아 있다 -- 할당은 같은데 채택이 %.2f%% 에서 다르다" % e4)
     else:
         print("  [4] 임계값 예외가 이 자료에서는 발현되지 않았다")
     return 0

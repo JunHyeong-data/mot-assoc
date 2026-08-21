@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """실험 1f -- 분포족을 Student-t 로 바꾸면 sigma 가 쓸모 있어지는가.
 
-**사전 선언은 README 의 "실험 1f" 절. 자료보다 먼저 커밋했다.**
+**사전 등록은 README 의 "실험 1f" 절. 자료보다 먼저 커밋했다.**
 
 실험 1e 가 실패 원인을 꼬리로 지목했다 (꼬리비 12~213, 가우시안이면 1.0).
 꼬리를 담는 분포족을 주면 고쳐져야 한다. 안 고쳐지면 원인이 꼬리가 아니다.
@@ -9,7 +9,7 @@
 **가장 중요한 설계**: t 를 개체별 Sigma_d 에만 주면 t 가 이기는 게 당연하다
 (꼬리 유연성 덕이지 Sigma_d 에 정보가 있어서가 아니다). **모든 모형에 t 를
 똑같이 주고 nu, k 를 각자 적합시킨다.** 그래야 남는 차이가 "개체별 Sigma_d 가
-상자크기 h^2 보다 나은가" 하나뿐이다.
+박스크기 h^2 보다 나은가" 하나뿐이다.
 
 2차원 t: eps ~ t_nu(0, S) 이면 z^2 = eps^T S^-1 eps 에 대해 z^2/2 ~ F(2, nu).
 따라서 적용범위 임계값은 2*F_0.95(2, nu) 이고 **nu 마다 다르다.**
@@ -30,7 +30,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 SEQS = ["MOT17-02", "MOT17-04", "MOT17-05", "MOT17-09",
         "MOT17-10", "MOT17-11", "MOT17-13"]
-# 소스 갈래. "" = NMS 후보 산포(실험 1), "-dfl" = DFL 분포 분산(실험 1g).
+# 소스 조건. "" = NMS 후보 산포(실험 1), "-dfl" = DFL 분포 분산(실험 1g).
 TAG = sys.argv[1] if len(sys.argv) > 1 else ""
 DIM = 2
 # nu 격자. inf 는 가우시안이다 (같은 코드로 두 분포족을 다룬다).
@@ -160,7 +160,7 @@ def main():
 
     print()
     print("=" * 92)
-    print("사전 선언한 판정 -- T-A vs T-C 하나다")
+    print("사전 등록한 판정 -- T-A vs T-C 하나다")
     print("=" * 92)
     ta, tc = np.median(res["T-A"]["nll"]), np.median(res["T-C"]["nll"])
     ga, gc = np.median(res["G-A"]["nll"]), np.median(res["G-C"]["nll"])

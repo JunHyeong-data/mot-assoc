@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """실험 9 -- **분석 단위를 바꾸면 천장이 열리는가.**
 
-사전 선언은 `PREREG.md` (커밋 `b9561c3`, 자료보다 먼저).
+사전 등록은 `PREREG.md` (커밋 `b9561c3`, 자료보다 먼저).
 
-설계 계산(exp07)이 갈래 2 를 "유망하다" 고 적었다. 그게 정말 되는지 따진다.
+설계 계산(exp07)이 조건 2 를 "유망하다" 고 적었다. 그게 정말 되는지 따진다.
 
     Var(d_s) = Var_true(장면이 실제로 다르다) + Var_meas(재는 데 생긴 잡음)
 
@@ -12,7 +12,7 @@ Var_true 가 지배적이면 장면 수가 진짜 천장이다.
 
 단위는 (시퀀스, 프레임, GT id), 결과값은 **IDTP 지시자 0/1**.
 전역 id 대응은 TrackEval `Identity` 의 헝가리안을 복제하고, 복제가 맞는지는
-**IDF1 을 벤더링된 구현과 대조**해서 확인한다 (관문 [0a]).
+**IDF1 을 벤더링된 구현과 대조**해서 확인한다 (사전 점검 [0a]).
 
 사용법:
     python experiments/exp09_unit/decompose.py
@@ -36,7 +36,7 @@ THR = 0.5                   # IoU 임계. Identity 기본값과 같다
 BLOCK = 50                  # 블록 부트스트랩의 블록 길이 (프레임)
 NBOOT = 2000
 SEED = 20260818
-MIN_DETS = 1000             # 관문 [0b]
+MIN_DETS = 1000             # 사전 점검 [0b]
 
 PAIRS = [("iou", "wn_size_rate", "큰 효과 (기록 HOTA -4.98)"),
          ("_headroom/th080", "_headroom/th085", "작은 효과 (기록 HOTA +0.04)")]
@@ -46,7 +46,7 @@ def idtp_per_unit(data):
     """전역 id 대응을 풀고 **GT 검출마다 IDTP 지시자**를 낸다.
 
     `identity.py:48-80` 을 그대로 복제한다. 반환:
-      keys  (t, gt_id) 튜플 배열 -- 갈래 간 짝짓기의 열쇠
+      keys  (t, gt_id) 튜플 배열 -- 조건 간 짝짓기의 열쇠
       y     0/1 지시자
       idf1  복제가 맞는지 대조할 값
     """
@@ -129,13 +129,13 @@ def main():
     print("=" * 96)
     print("실험 9 -- 분석 단위를 바꾸면 천장이 열리는가")
     print("=" * 96)
-    print("사전 선언 PREREG.md (커밋 b9561c3, 자료보다 먼저)")
+    print("사전 등록 PREREG.md (커밋 b9561c3, 자료보다 먼저)")
     print("이건 트래커가 아니라 **설계**에 대한 실험이다.")
     print()
 
-    # ---------------- 관문 [0a] 대응 복제 검산 ----------------
+    # ---------------- 사전 점검 [0a] 대응 복제 검산 ----------------
     print("=" * 96)
-    print("[0a] 관문 -- 복제한 Identity 대응이 벤더링된 구현과 맞는가")
+    print("[0a] 사전 점검 -- 복제한 Identity 대응이 벤더링된 구현과 맞는가")
     print("=" * 96)
     ident = Identity()
     cache, ok = {}, True
@@ -155,13 +155,13 @@ def main():
                       % (seq.replace("-FRCNN", ""), mine["idf1"],
                          float(ref["IDF1"]), "** 불일치 **" if bad else "OK"))
     if not ok:
-        print("  ** 관문 [0a] 실패. 대응 복제가 틀렸다. 판정하지 않는다 **")
+        print("  ** 사전 점검 [0a] 실패. 대응 복제가 틀렸다. 판정하지 않는다 **")
         return 1
 
-    # ---------------- 관문 [0b] 표본 크기 ----------------
+    # ---------------- 사전 점검 [0b] 표본 크기 ----------------
     print()
     print("=" * 96)
-    print("[0b] 관문 -- 결정 단위가 정말 '수만' 인가")
+    print("[0b] 사전 점검 -- 결정 단위가 정말 '수만' 인가")
     print("=" * 96)
     tot = 0
     for seq in SEQS:
@@ -177,14 +177,14 @@ def main():
     for a, b, label in PAIRS:
         print()
         print("=" * 96)
-        print("갈래 쌍: %s  vs  %s     [%s]" % (a, b, label))
+        print("조건 쌍: %s  vs  %s     [%s]" % (a, b, label))
         print("=" * 96)
 
         rows, dsl, ses, iids, ns = [], [], [], [], []
         mismatch = 0
         for seq in SEQS:
             A, B = cache[(a, seq)], cache[(b, seq)]
-            # 관문 [0c]: 단위 집합이 같아야 한다
+            # 사전 점검 [0c]: 단위 집합이 같아야 한다
             if A["keys"].shape != B["keys"].shape or not np.array_equal(A["keys"], B["keys"]):
                 mismatch += 1
                 continue
@@ -214,7 +214,7 @@ def main():
         share = var_meas / var_tot if var_tot > 0 else float("nan")
 
         print()
-        print("  [1] **주 종말점 -- 분산 분해**")
+        print("  [1] **주 평가지표 -- 분산 분해**")
         print("      Var(d_s) 전체       = %.3e   (SD %.5f)" % (var_tot, np.sqrt(var_tot)))
         print("      Var_meas (측정잡음) = %.3e   (평균 블록SE %.5f)"
               % (var_meas, se_arr.mean()))
@@ -233,10 +233,10 @@ def main():
         print("      군집/순진 배율 = %.1f배" % (clustered / max(naive, 1e-12)))
 
         # ---- 민감도: SE 추정 방식에 결론이 얼마나 달렸는가 ----
-        # 사전 선언이 "iid 값도 같이 적어 얼마나 다른지 보인다" 고 했다.
+        # 사전 등록이 "iid 값도 같이 적어 얼마나 다른지 보인다" 고 했다.
         # 블록 개수도 함께 낸다 -- 블록이 적으면 블록SE 자체가 불안정하다.
         print()
-        print("  [민감도] SE 추정 방식에 따라 주 종말점이 어떻게 움직이는가")
+        print("  [민감도] SE 추정 방식에 따라 주 평가지표가 어떻게 움직이는가")
         print("      %-14s %12s %12s %10s" % ("SE 추정", "Var_meas", "몫", "판정"))
         print("      " + "-" * 54)
         for name, blk in (("iid", None), ("블록 25", 25), ("블록 50", 50),
@@ -261,16 +261,16 @@ def main():
             print("         불안정하므로 위 판정을 그대로 믿으면 안 된다 **")
 
         print()
-        print("  판정 -- 사전 선언한 표를 그대로 적용한다")
+        print("  판정 -- 사전 등록한 표를 그대로 적용한다")
         if share > 0.5:
-            print("      Var_meas 몫 %.3f > 0.5 => **갈래 2 가 열린다.**" % share)
+            print("      Var_meas 몫 %.3f > 0.5 => **조건 2 가 열린다.**" % share)
             print("      exp07 의 591 은 과대추정이므로 다시 계산해야 한다")
         elif share >= 0.1:
             print("      0.1 <= %.3f <= 0.5 => 부분적. 필요 장면 수가 줄지만" % share)
             print("      자릿수는 안 바뀐다")
         else:
             print("      Var_meas 몫 %.3f < 0.1 => **장면 수가 진짜 천장이다.**" % share)
-            print("      결정 단위로 쪼개도 소용없다. **갈래 2 를 접는다**")
+            print("      결정 단위로 쪼개도 소용없다. **조건 2 를 접는다**")
     return 0
 
 
