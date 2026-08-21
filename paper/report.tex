@@ -101,6 +101,24 @@
 \noindent 본 연구는 사전 등록된 실험 계획, 재현 가능한 캐시 기반 실험 설계, 그리고 18건의 철회 기록을 함께 공개한다. 코드와 실험 기록은 \url{https://github.com/JunHyeong-data/mot-assoc}에서 확인할 수 있다.
 
 % ================================================================
+% 영문 초록  **학과 양식에 요구가 없으면 이 장을 통째로 지우면 된다.**
+% ================================================================
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Data association in multi-object tracking (MOT) is standardly posed as a cost matrix between tracks and detections and solved with the Hungarian algorithm. It has long been expected that injecting the \textit{localization uncertainty} produced by the detector into this cost would improve tracking, yet reported results are inconsistent. This work tests that expectation on MOT17 under controlled conditions: detections are cached so that every condition replays a bit-identical set, and the uncertainty $\sigma$ is injected through four channels --- Kalman filter measurement noise, the distance function, gating, and the matching threshold --- with two estimation methods (NMS candidate spread, DFL distribution variance) compared under the same procedure.
+
+The conclusion is stated first. \textbf{The rank information carried by detector-produced $\sigma$ is about detection quality and transfers only weakly to association decisions, and this verdict depends on how it is measured.}
+
+The primary claim is at the detection level. $\sigma$ does predict localization error (partial correlation controlling for box height, median $+0.322$, positive in all seven sequences), yet as a probabilistic model it loses to a simple box-size model in all seven sequences (two-sided sign test $p = 0.0156$), and this holds under a Student-$t$ family fitted to the lower bound of the degrees-of-freedom grid and after conformal recalibration raises coverage to 96.1\%. At the tracking level --- reported descriptively for these seven scenes --- all four channels are negative, but they should not be weighted equally: two fall below the minimum detectable effect of this design ($3.31$ HOTA) and are indistinguishable from zero. An association oracle shows that headroom does exist ($+3.122$ HOTA when only the first association stage is solved with ground truth), so ``there was nothing to gain'' is rejected. Whether $\sigma$ can reach that headroom was measured directly: the AUC for correctable association errors is $0.4571$ (DFL) and $0.5355$ (NMS), both below the preregistered threshold of $0.55$ under an independence assumption, though the NMS verdict does not survive a sequence-cluster bootstrap.
+
+Finally, the measurement itself matters. Scored the way the Hungarian algorithm actually asks --- pairing the correct and the wrongly matched detection inside the same call --- box size selects the correct detection $64.5\%$ of the time, whereas the marginal AUC over all accepted pairs makes the same signal look useless ($0.4661$). \textbf{The two numbers are probabilities of the same form on opposite sides of chance; only the comparison set differs.} Detector $\sigma$ stays below $0.5$ under either. The practical recommendation of this work is therefore about order rather than outcome: measure the oracle headroom and the row-conditional discriminability \textit{before} designing an injection form. Each costs one tracker replay; this study proceeded in the opposite order.
+
+\vspace{0.3cm}
+\noindent\textit{Keywords: multi-object tracking, data association, detection uncertainty, association oracle headroom, negative results, preregistration}
+
+
+% ================================================================
 % 목차
 % ================================================================
 \tableofcontents
@@ -128,13 +146,13 @@
 ``When two tracks compete for the same detection, the Mahalanobis distance favors larger uncertainty $\ldots$ This is an undesired behavior as it can lead to increased track fragmentations and unstable tracks.''\citep{wojke2017}
 \end{quote}
 
-이는 본 연구가 \textbf{공분산 역설}이라 부르는 현상 --- 불확실성이 클수록 마할라노비스 거리가 작아져 오히려 선호되는 구조 --- 을 정확히 지적한 것이다. DeepSORT는 이를 비용 함수를 수정하는 대신 트랙 나이 순서의 캐스케이드로 우회하였다. 이후 UCMCTrack\citep{yi2024}이 거리에 로그 행렬식 항을 더해 이 편향을 억제하는 방법을 제시하였다(\ref{sec:2-6}절). 그러나 두 대응 모두 불확실성을 무엇으로 재는가는 건드리지 않는다. 전자는 순서로 피해 가고, 후자는 벌점을 더할 뿐이다. 검출기가 산출한 불확실성이 연관에 쓸모가 있는지 자체를 통제된 조건에서 측정한 연구는 찾기 어렵다.
+이는 본 연구가 \textbf{공분산 역설}이라 부르는 현상 --- 불확실성이 클수록 마할라노비스 거리가 작아져 오히려 선호되는 구조 --- 을 정확히 지적한 것이다. DeepSORT는 이를 비용 함수를 수정하는 대신 트랙 나이 순서의 캐스케이드로 우회하였다. 이후 UCMCTrack\citep{yi2024}이 거리에 로그 행렬식 항을 더해 이 편향을 억제하는 방법을 제시하였다(\ref{sec:2-5}절). 그러나 두 대응 모두 불확실성을 무엇으로 재는가는 건드리지 않는다. 전자는 순서로 피해 가고, 후자는 벌점을 더할 뿐이다. 검출기가 산출한 불확실성이 연관에 쓸모가 있는지 자체를 통제된 조건에서 측정한 연구는 찾기 어렵다.
 
 본 연구의 기여는 다음 네 가지이다.
 
 첫째, \textbf{검출 불확실성이 데이터 연관에 도달하는지를 통제된 조건에서 측정한다.} 검출 결과를 캐시로 고정하여 비교군 사이에서 비트 단위로 동일하게 유지하고, 적용 경로만을 변화시켜 그 효과를 분리한다. 두 가지 추정 방식과 네 가지 적용 경로를 같은 절차로 비교한다.
 
-둘째, \textbf{연관 오라클 분석을 이 질문에 적용한다.} 검출을 고정한 채 1단계 연관만 정답으로 해결하여 ``이 데이터에서 연관이 개선할 수 있는 여지''를 직접 잰다. 이는 음의 결과를 해석하는 데 필수적이다. ``방법이 나빴다''와 ``개선할 것이 없었다''를 가르려면 이 값이 있어야 하기 때문이다. 다만 이 분석 자체는 본 연구의 고안이 아니다. 오라클로 한 성분만 정답으로 바꾸고 그 차이를 귀속하는 방법은 검출 분야의 TIDE\citep{bolya2020}에서 정립되었고, 추적에서는 Tracktor\citep{bergmann2019}, DanceTrack\citep{sun2022}, MeNToS\citep{miah2023}, CAMELTrack\citep{somers2025}이 이미 사용하였다(\ref{sec:2-5}절). 본 연구가 더한 것은 1단계로 범위를 한정한 것과 그 이득을 AssA/DetA로 귀속한 것이며, 이는 도구의 세부이지 독립적인 기여가 아니다.
+둘째, \textbf{연관 오라클 분석을 이 질문에 적용한다.} 검출을 고정한 채 1단계 연관만 정답으로 해결하여 ``이 데이터에서 연관이 개선할 수 있는 여지''를 직접 잰다. 이는 음의 결과를 해석하는 데 필수적이다. ``방법이 나빴다''와 ``개선할 것이 없었다''를 가르려면 이 값이 있어야 하기 때문이다. 다만 이 분석 자체는 본 연구의 고안이 아니다. 오라클로 한 성분만 정답으로 바꾸고 그 차이를 귀속하는 방법은 검출 분야의 TIDE\citep{bolya2020}에서 정립되었고, 추적에서는 Tracktor\citep{bergmann2019}, DanceTrack\citep{sun2022}, MeNToS\citep{miah2023}, CAMELTrack\citep{somers2025}이 이미 사용하였다(\ref{sec:2-4}절). 본 연구가 더한 것은 1단계로 범위를 한정한 것과 그 이득을 AssA/DetA로 귀속한 것이며, 이는 도구의 세부이지 독립적인 기여가 아니다.
 
 셋째, \textbf{신호가 실제로 쓸모 있는지를 적용 경로와 무관하게 직접 잰다.} 오라클로 어느 연관 결정이 틀렸는지 알 수 있으므로, 어떤 형태로 넣을지 정하기 \textit{전에} ``이 신호가 연관 오류를 구별하는가''를 물을 수 있다. \ref{sec:7-2}절에서 이를 사전 점검 절차로 정리한다.
 
@@ -168,7 +186,7 @@ NWD & 거리 함수 & 검출 과제에서 이득(추적 아님) & \citep{wang202
 \midrule
 \multicolumn{4}{l}{\textit{추정 방식: 검출 신뢰도}} \\
 NSA Kalman & 칼만 필터 $R$ & 채택됨 & \citep{du2023} \\
-ByteTrack 구현 & 비용 곱셈 & 논문에 근거 없음 & \ref{sec:2-4}절 \\
+ByteTrack 구현 & 비용 곱셈 & 논문에 근거 없음 & \ref{sec:2-3}절 \\
 \midrule
 \multicolumn{4}{l}{\textit{추정 방식: 위치 품질}} \\
 LG-Track & 비용 곱셈 & 이득 보고(식 1, 3) & \citep{meng2023} \\
@@ -196,31 +214,19 @@ Bae와 Yoon & 연관 순서(라우팅) & 이득 보고 & \citep{bae2014} \\
 
 표에 없는 조합도 정보이다. 본 연구가 확인한 범위에서 \textbf{박스 크기를 연관 순서에 사용한 사례}나 검출 신뢰도를 게이팅에 사용한 사례는 없었다. 또한 검출별 스칼라를 비용에 덧셈으로 넣은 사례가 본 연구 외에 하나도 없다 --- \ref{sec:4-1}절에서 그 이유를 설명한다. ``검출별''이라는 한정이 필요하다. 쌍에 의존하는 항을 더하는 사례는 있으며(OC-SORT의 OCM), 그것은 이 관찰의 반례가 아니다(\ref{sec:4-1}절).
 
-\section{추정 방식: 무엇을 불확실성으로 삼는가}\label{sec:2-2}
+\section{두 축의 구체적 형태}\label{sec:2-2}
 
-\paragraph{박스 크기 기반} 가장 널리 쓰이는 방식은 박스의 폭과 높이에 비례하는 공분산을 가정하는 것이다. NWD\citep{wang2021}는 바운딩 박스를 2차원 가우시안으로 모형화하며 $\Sigma = \mathrm{diag}(w^2/4,\, h^2/4)$를 사용한다. UCMCTrack\citep{yi2024}은 칼만 필터의 측정잡음을 $R_{uv} = \mathrm{diag}((\sigma_m w)^2,\, (\sigma_m h)^2)$로 정의하는데, 여기서 $\sigma_m$은 하이퍼파라미터이고 $w, h$는 검출된 박스의 폭과 높이이다. 즉 이 방식은 검출기가 산출한 불확실성이 아니라 \textbf{기하학적 크기}를 대리 변수로 사용한다.
+\paragraph{무엇을 불확실성으로 삼는가} 가장 널리 쓰이는 것은 \textbf{박스 크기}를 대리 변수로 쓰는 방식이다. NWD\citep{wang2021}는 바운딩 박스를 2차원 가우시안으로 보고 $\Sigma = \mathrm{diag}(w^2/4,\, h^2/4)$를, UCMCTrack\citep{yi2024}은 칼만 필터의 측정잡음을 $R_{uv} = \mathrm{diag}((\sigma_m w)^2,\, (\sigma_m h)^2)$로 정의한다(여기서 $\sigma_m$은 하이퍼파라미터이고 $w, h$는 검출된 박스의 폭과 높이이다). \textbf{검출 신뢰도}를 쓰는 NSA Kalman\citep{du2023}은 신뢰도 $c$로 $\tilde{R} = (1-c) R$을 조정한다. 셋 다 검출기가 산출한 불확실성이 아니다. \textbf{검출기가 산출한 $\sigma$}를 쓰는 것은 둘인데, UTrack\citep{solano2024}은 NMS에서 억제된 후보 박스들의 중심 분산을 검출기 구조 변경 없이 추론 이후에 측정하고, UncertaintyTrack\citep{lee2024}은 검출기가 분포 매개변수를 직접 예측하도록 학습시킨다. GFLv2\citep{li2021}는 DFL(Distribution Focal Loss) 분포의 통계량으로 위치 품질을 예측하였으나 추적으로 확장하지는 않았다.
 
-\paragraph{검출 신뢰도 기반} NSA Kalman\citep{du2023}은 검출 신뢰도 $c$를 이용해 측정잡음을 $\tilde{R} = (1-c) R$로 조정한다. 신뢰도가 높을수록 잡음을 작게 보는 직관적 규칙이다.
+\paragraph{어디에 넣는가} \textbf{칼만 필터 측정잡음}이 가장 많이 시도된 경로이며 위에서 언급한 넷이 모두 여기에 해당한다. \textbf{거리 함수}는 IoU를 분포 간 거리로 대체하는 접근으로 NWD가 대표적이며, UCMCTrack은 정규화된 마할라노비스 거리 $D = \epsilon^\top S^{-1} \epsilon + \ln|S|$를 사용한다. 여기서 로그 행렬식 항은 공분산 역설을 억제하기 위한 것이다(\ref{sec:2-4}절). \textbf{게이팅}은 불확실성에 비례하여 박스를 키워 겹침 확률을 높이는 방식으로, UncertaintyTrack의 어블레이션에서 \textbf{단일 최대 기여}를 보였다(mMOTA $+2.2$, mIDF1 $+3.0$). \textbf{연관 순서와 라우팅}은 DeepSORT의 트랙 나이 캐스케이드와 Bae와 Yoon\citep{bae2014}의 tracklet confidence 분기처럼 대개 \textbf{트랙 쪽} 양을 쓰며, 검출 쪽 신호를 쓴 사례는 LG-Track\citep{meng2023}의 4단계 캐스케이드와 UncertaintyTrack의 엔트로피 기반 그리디 매칭이다.
 
-\paragraph{검출기 산출 불확실성} UTrack\citep{solano2024}은 NMS 과정에서 억제된 후보 박스들의 중심 분산을 불확실성으로 사용한다. 검출기 구조를 변경하지 않고 추론 이후에 측정한다는 점이 설계 의도이다. UncertaintyTrack\citep{lee2024}은 검출기가 직접 분포 매개변수를 예측하도록 학습시킨다. GFLv2\citep{li2021}는 검출 단계에서 DFL(Distribution Focal Loss) 분포의 통계량(상위 4개 값과 평균)으로 위치 품질을 예측하였으나, 추적으로 확장하지는 않았다.
-
-\section{적용 경로: 어디에 넣는가}\label{sec:2-3}
-
-\paragraph{칼만 필터 측정잡음} 가장 많이 시도된 경로이다. 위에서 언급한 UCMCTrack, NSA Kalman, UTrack, UncertaintyTrack이 모두 여기에 해당한다. \textbf{같은 경로임에도 결과가 갈린다는 점이 중요하다}. 박스 크기를 사용한 UCMCTrack은 SOTA를 달성한 반면, 검출기 산출 불확실성을 사용한 두 연구는 손실을 보고하였다.
-
-\paragraph{거리 함수} IoU를 분포 간 거리로 대체하는 접근이다. NWD가 대표적이며, UCMCTrack은 정규화된 마할라노비스 거리 $D = \epsilon^\top S^{-1} \epsilon + \ln|S|$를 사용한다. 여기서 로그 행렬식 항은 공분산 역설을 억제하기 위한 것으로, 저자들은 그 목적을 ``측정의 정확도와 불확실성까지 함께 고려하기 위해''라고 명시하였다.
-
-\paragraph{게이팅과 박스 확장} UncertaintyTrack의 어블레이션 실험에서 \textbf{가장 큰 기여}를 보인 성분이다(mMOTA $+2.2$, mIDF1 $+3.0$). 불확실성에 비례하여 박스를 키워 겹침 확률을 높이는 방식이다.
-
-\paragraph{연관 순서와 라우팅} DeepSORT는 트랙 나이 순으로 캐스케이드를 구성하고, Bae와 Yoon\citep{bae2014}은 tracklet confidence로 지역 연관과 전역 연관을 분기한다. 두 방식 모두 \textbf{트랙 쪽} 양을 사용한다. 검출 쪽 신호를 사용한 사례로는 LG-Track\citep{meng2023}의 4단계 캐스케이드와 UncertaintyTrack의 엔트로피 기반 그리디 매칭이 있다.
-
-\section{비용 함수의 형태에 대한 관찰}\label{sec:2-4}
+\section{비용 함수의 형태에 대한 관찰}\label{sec:2-3}
 
 원문을 검토한 결과 한 가지 규칙성이 관찰된다. \textbf{문헌이 검출별 스칼라를 비용에 넣을 때는 예외 없이 곱셈 형태를 사용한다.} LG-Track은 $C_1 = C_{\mathrm{iou}} \cdot d_l$, $C_3 = C_{\cos} \cdot d_s$의 형태를 사용하고, ByteTrack 구현체는 $\mathrm{cost} = 1 - \mathrm{IoU} \cdot s$를 사용한다. 덧셈 형태를 사용한 사례는 찾을 수 없었다.
 
 주목할 점은 이 형태를 선택한 이유를 밝힌 문헌이 없다는 것이다. 특히 ByteTrack의 경우, 본 연구가 논문 전문(64{,}480자)을 검색한 결과 점수를 비용에 곱하는 식이 \textbf{논문에 존재하지 않는다}. 논문에서 검출 점수는 높음과 낮음을 나누는 기준으로만 사용되며, 유사도는 ``IoU 또는 Re-ID 특징 거리''로 기술된다. $\mathrm{cost} = 1 - \mathrm{IoU} \cdot s$는 구현체에만 존재하는 설계이다. \ref{sec:4-1}절에서 이 형태가 왜 필연적인지에 대한 설명을 제시한다.
 
-\section{오라클 분석: 이 논문이 빌려 쓰는 도구}\label{sec:2-5}
+\section{오라클 분석: 이 논문이 빌려 쓰는 도구}\label{sec:2-4}
 
 본 연구는 \ref{sec:4-3}절에서 연관 오라클 분석을 사용한다. \textbf{이 방법은 본 연구의 고안이 아니므로 출처를 밝힌다.}
 
@@ -228,7 +234,7 @@ Bae와 Yoon & 연관 순서(라우팅) & 이득 보고 & \citep{bae2014} \\
 
 \textbf{따라서 본 연구의 오라클은 새로운 방법이 아니라 확립된 분석의 적용이다.} 두 가지 세부만 다르다. 첫째, 본 연구는 1단계 연관만 오라클로 풀고 2$\sim$3단계와 트랙 관리는 그대로 둔다. 이는 여지를 \textit{더 작게} 만드는 방향이므로 보수적이다. 둘째, 정답 박스를 검출 대신 넣지 않고 실제 검출을 그대로 유지한다. 정답 박스를 넣으면 오탐과 미검출이 사라져 연관 문제 자체가 쉬워지므로, 실제 배포 조건에서의 여지를 측정하려면 검출을 건드리지 않아야 한다. \ref{sec:5-6}절에서 이 차이가 실제로 크다는 것을 보인다. 여지의 24.7\%가 오탐 행이 출력에서 빠지는 데서 온다.
 
-\section{공분산 역설에 대한 기존 대응}\label{sec:2-6}
+\section{공분산 역설에 대한 기존 대응}\label{sec:2-5}
 
 가림(occlusion) 구간에서 트랙의 공분산이 커지면 마할라노비스 거리가 작아져 오히려 매칭이 선호되는 현상이 발생한다. 이에 대한 대응은 세 갈래로 나뉜다. DeepSORT는 캐스케이드로 우회하였고, UCMCTrack은 로그 행렬식 항을 추가하여 억제하였다. OC-SORT\citep{cao2023}는 다른 문제를 다룬다. 관측이 없는 동안 상태 추정의 오차가 시간에 따라 증폭되는 현상(temporal error magnification)에 대응하며, 논문 본문에서 ``uncertainty''라는 용어를 사용하지 않는다. 즉 가림 구간에서 발생하는 두 가지 실패 --- \textbf{평균의 표류}와 공분산의 팽창 --- 중 전자를 다룬 것이다.
 
@@ -315,7 +321,7 @@ $N \le M$인 할당 문제에서, 검출에만 의존하는 항을 비용에 더
 
 이는 헝가리안 알고리즘의 축소 단계가 근거하는 표준적 성질이며 새로운 정리가 아니다. 다만 본 연구가 강조하는 것은 이 성질의 \textbf{설계적 함의}이다.
 
-\paragraph{따라서 불확실성은 트랙과 상호작용하는 형태로 들어가야 한다.} 곱셈 형태 $c_{ij} \cdot u_j$는 $c_{ij}$가 쌍에 의존하므로 이 제약을 피한다. \ref{sec:2-4}절에서 관찰한 바와 같이 문헌은 예외 없이 곱셈을 사용해 왔으며, 본 관찰은 그 선택에 대한 설명을 제공한다.
+\paragraph{따라서 불확실성은 트랙과 상호작용하는 형태로 들어가야 한다.} 곱셈 형태 $c_{ij} \cdot u_j$는 $c_{ij}$가 쌍에 의존하므로 이 제약을 피한다. \ref{sec:2-3}절에서 관찰한 바와 같이 문헌은 예외 없이 곱셈을 사용해 왔으며, 본 관찰은 그 선택에 대한 설명을 제공한다.
 
 \paragraph{덧셈을 쓰는 문헌이 반례가 아닌 이유} 비용에 항을 더하는 방법이 없는 것은 아니다. OC-SORT\citep{cao2023}의 OCM은 방향 일관성 항을 비용에 더한다. 그러나 이 항은 \textbf{트랙의 진행 방향과 검출의 위치에 함께 의존하는 쌍 항}이므로 검출별 스칼라가 아니고, 따라서 식~(\ref{eq:col_const})의 조건에 해당하지 않는다. 위 명제가 배제하는 것은 검출에만 의존하는 항이며, 쌍에 의존하는 항은 덧셈으로도 할당에 도달한다.
 
@@ -739,21 +745,9 @@ NMS 후보 분산 & 0.4720 & $0.449 \sim 0.495$ & $0.427 \sim 0.510$ & 1/7 \\
 
 \paragraph{두 값은 우연 수준의 반대쪽에 놓인다} 이 대비를 ``묻혔던 신호가 드러났다''로만 읽으면 한 가지를 놓친다(그림~\ref{fig:reversal}).
 
-\begin{center}
-\small
-\begin{tabular}{llr}
-\toprule
-\textbf{측정 방식} & 비교 대상 & $\sigma_C$ \\
-\midrule
-주변부 (표~\ref{tab:auc}) & 자료 어디에 있든 정답 쌍과 & 0.4661 \\
-행 안 (표~\ref{tab:withinrow}) & 같은 호출의 정답 검출과 & 0.6451 \\
-\bottomrule
-\end{tabular}
-\end{center}
+$\sigma_C$의 두 값 --- 주변부 $0.4661$(표~\ref{tab:auc})과 행 안 $0.6451$(표~\ref{tab:withinrow}) --- 은 \textbf{같은 형태의 확률이다.} 오답 쪽 검출의 신호가 더 클 확률이며, 비교 대상만 ``자료 어디에 있든 정답 쌍''에서 ``같은 호출의 정답 검출''로 바뀌었는데 하나는 우연 수준 아래, 다른 하나는 위이다.
 
-두 값은 같은 형태의 확률이다. \textbf{오답 쪽 검출의 신호가 더 클 확률}. 비교 대상만 다른데 하나는 우연 수준 아래, 다른 하나는 위이다.
-
-\paragraph{다만 주변부 값을 방향으로 읽어서는 안 된다} \ref{sec:6-4}절은 $0.4661$을 ``박스가 작을수록 연관이 틀리기 쉽다''로 읽었으나, \textbf{분포를 보면 그렇게 요약되지 않는다.} 수정 가능한 오류 쪽 $\sigma_C$는 아래쪽에 더 몰려 있지만(하위 사분위 $37.4$ 대 $70.6$ px) 중앙값은 오히려 높고($89.8$ 대 $86.8$) 위쪽 꼬리는 얇다(90분위 $200.1$ 대 $222.0$). 두 분포가 교차하므로 $0.4661$은 이동이 아니라 교차를 요약한 순위 통계이며, 하나의 방향으로 옮겨 적을 수 없다. 반면 행 안 값은 방향이 일정하다. 잘못 채택된 검출이 같은 호출의 정답 검출보다 큰 경우가 $64.5\%$이다. 즉 주변부 측정은 순위가 낮을 뿐 아니라 쓸 만한 규칙 자체를 정의하지 못한다.
+\paragraph{다만 주변부 값을 방향으로 읽어서는 안 된다} 부록~\ref{app:scatter}는 $0.4661$을 ``박스가 작을수록 연관이 틀리기 쉽다''로 읽었으나, \textbf{분포를 보면 그렇게 요약되지 않는다.} 수정 가능한 오류 쪽 $\sigma_C$는 아래쪽에 더 몰려 있지만(하위 사분위 $37.4$ 대 $70.6$ px) 중앙값은 오히려 높고($89.8$ 대 $86.8$) 위쪽 꼬리는 얇다(90분위 $200.1$ 대 $222.0$). 두 분포가 교차하므로 $0.4661$은 이동이 아니라 교차를 요약한 순위 통계이며, 하나의 방향으로 옮겨 적을 수 없다. 반면 행 안 값은 방향이 일정하다. 잘못 채택된 검출이 같은 호출의 정답 검출보다 큰 경우가 $64.5\%$이다. 즉 주변부 측정은 순위가 낮을 뿐 아니라 쓸 만한 규칙 자체를 정의하지 못한다.
 
 이는 모순이 아니라 두 측정 방식이 다른 질문을 묻기 때문이다. 주변부 비교는 서로 다른 장면과 프레임의 쌍을 가로질러 세우고, 행 안 비교는 한 결정 안으로 범위를 좁혀 장면 간 성분을 \textit{구성상} 제거한다. 두 값의 차이와 위의 교차는 측정이다. \textbf{그러나 교차의 원인은 측정하지 않았다}. 장면 구성이 순위를 지배한 결과라는 설명이 자연스러우나 본 연구는 그것을 분리하지 않았다.
 
@@ -806,7 +800,7 @@ NMS 후보 분산 & 0.4720 & $0.449 \sim 0.495$ & $0.427 \sim 0.510$ & 1/7 \\
 
 \ref{sec:2-3}절에서 관찰한 바와 같이 칼만 필터 측정잡음이라는 \textbf{같은 경로}에서도 문헌의 결과가 갈린다. 표~\ref{tab:landscape}의 해당 행만 추리면 다음과 같다 --- 박스 크기를 넣은 UCMCTrack\citep{yi2024}은 SOTA를 달성하였고, 검출 신뢰도를 넣은 NSA Kalman\citep{du2023}은 널리 채택되었으며, 검출기가 산출한 $\sigma$를 넣은 두 연구(UTrack\citep{solano2024}, UncertaintyTrack\citep{lee2024})는 모두 손실을 보고하였다.
 
-\textbf{즉 성공한 쪽의 공통점은 ``박스 크기''가 아니라, 실패한 쪽의 공통점이 ``검출기가 산출한 $\sigma$''이다.} 이 구분이 중요하다. LG-Track은 위치 품질을, DeepSORT와 Bae는 트랙 쪽 이력을 사용하여 이득을 보고하므로 성공 조건을 기하학적 정보로 좁힐 근거는 없다. 다만 NSA Kalman을 반례로 쓸 수는 없다 --- 논문은 $R_k$를 ``preset constant''로 서술하지만, 이 연구가 사용한 구현(및 StrongSORT 계열 전반)에서 $R_k$는 박스 크기에 비례하고 NSA는 거기에 $(1-c)$를 곱할 뿐이다. 이는 \ref{sec:2-4}절이 \texttt{fuse\_score}에 대해 지적한 것과 같은 종류의 간극이다. 논문의 서술과 구현이 다르다. 자료가 지지하는 것은 검출기 산출 불확실성을 넣은 쪽이 일관되게 진다는 관찰뿐이다.
+\textbf{즉 성공한 쪽의 공통점은 ``박스 크기''가 아니라, 실패한 쪽의 공통점이 ``검출기가 산출한 $\sigma$''이다.} 이 구분이 중요하다. LG-Track은 위치 품질을, DeepSORT와 Bae는 트랙 쪽 이력을 사용하여 이득을 보고하므로 성공 조건을 기하학적 정보로 좁힐 근거는 없다. 다만 NSA Kalman을 반례로 쓸 수는 없다 --- 논문은 $R_k$를 ``preset constant''로 서술하지만, 이 연구가 사용한 구현(및 StrongSORT 계열 전반)에서 $R_k$는 박스 크기에 비례하고 NSA는 거기에 $(1-c)$를 곱할 뿐이다. 이는 \ref{sec:2-3}절이 \texttt{fuse\_score}에 대해 지적한 것과 같은 종류의 간극이다. 논문의 서술과 구현이 다르다. 자료가 지지하는 것은 검출기 산출 불확실성을 넣은 쪽이 일관되게 진다는 관찰뿐이다.
 
 \ref{sec:5-2}절의 결과가 이 패턴에 대한 설명을 제공한다. NMS 후보 분산은 밀도 모형으로 박스 크기 모형에 7개 시퀀스 전부에서 패배하였다. \textbf{다만 이 설명은 NMS 후보 분산에 한정된다.} DFL 분포 분산은 같은 비교에서 방향이 반대였으므로(\ref{sec:5-2}절), ``검출기 산출 $\sigma$는 모형으로 쓸 수 없다''는 일반 명제로 확장하지는 않는다. 문헌의 두 실패 사례가 사용한 추정 방식은 NMS 후보 분산(UTrack)과 학습된 공분산(UncertaintyTrack)이며, 후자는 본 연구가 재현하지 않았다(\ref{sec:7-4}절).
 
@@ -976,7 +970,7 @@ DFL 분포 분산 & 0.4712 & 0.0288 & $+0.1589$ \\
 
 \paragraph{행 조건부 형태로 넣어 보기} \ref{sec:5-7}절은 같은 신호($\sigma_C$)를 두 측정 방식으로 재어 \textbf{우연 수준의 반대쪽에 놓이는 두 값}을 얻었다. 주변부 $0.4661$은 교차하는 두 분포의 요약이라 방향을 정의하지 못하고, 행 안 $0.6451$만 일정한 방향을 갖는다. 검출별 스칼라를 비용 전체에 넣는 형태는 이 둘을 한 행렬에 섞으므로, 박스 크기가 행 안 점검을 통과하고도 두 경로에서 지는 것과 무관하지 않을 수 있다. \textbf{이는 해석이며 본 연구가 측정하지 않았다.} 측정하려면 신호를 행 안의 상대 순서로만 쓰는 형태로 넣어야 한다. \textbf{다만 순진한 행 중심화는 퇴화한다}. 1단계 비용 행렬은 모든 검출이 모든 트랙의 후보이므로 행 평균을 빼면 그 평균이 행마다 같아 다시 상수가 되고 \ref{sec:4-1}절의 명제로 되돌아간다. 상대 순서는 그 트랙의 예측 박스와 겹치는 검출들처럼 \textbf{행마다 달라지는 후보 집합} 안에서 매겨야 쌍에 의존하는 항이 된다.
 
-\paragraph{경쟁 신호로 행 안 점검을 대조하기} 표~\ref{tab:withinrow}는 박스 크기가 행 안에서 정답을 $0.6451$로 고른다는 것을 보이지만, ``검출 품질을 나타내는 양이면 무엇이든 통과하는가''는 시험하지 않았다. 무작위 신호의 행 안 기댓값은 정의상 $0.5$이므로 필요한 것은 무작위 대조군이 아니라 \textbf{경쟁 신호 대조군}이다. 가장 비용이 낮은 후보는 검출 신뢰도 $s$이며, 이미 검출 캐시에 들어 있으므로 행 안 비교를 한 번 재생하며 열 하나를 더 기록하면 된다. 두 결과가 모두 쓸모 있다 --- $s$가 $0.5$ 근처라면 박스 크기의 $0.6451$이 검출 품질 대리변수 일반의 성질이 아니라는 근거가 되고, 반대로 높게 나오면 \ref{sec:2-4}절이 ``선택한 이유를 밝힌 문헌이 없다''고 적은 $\mathrm{cost} = 1 - \mathrm{IoU} \cdot s$ 형태에 대한 측정값이 된다.
+\paragraph{경쟁 신호로 행 안 점검을 대조하기} 표~\ref{tab:withinrow}는 박스 크기가 행 안에서 정답을 $0.6451$로 고른다는 것을 보이지만, ``검출 품질을 나타내는 양이면 무엇이든 통과하는가''는 시험하지 않았다. 무작위 신호의 행 안 기댓값은 정의상 $0.5$이므로 필요한 것은 무작위 대조군이 아니라 \textbf{경쟁 신호 대조군}이다. 가장 비용이 낮은 후보는 검출 신뢰도 $s$이며, 이미 검출 캐시에 들어 있으므로 행 안 비교를 한 번 재생하며 열 하나를 더 기록하면 된다. 두 결과가 모두 쓸모 있다 --- $s$가 $0.5$ 근처라면 박스 크기의 $0.6451$이 검출 품질 대리변수 일반의 성질이 아니라는 근거가 되고, 반대로 높게 나오면 \ref{sec:2-3}절이 ``선택한 이유를 밝힌 문헌이 없다''고 적은 $\mathrm{cost} = 1 - \mathrm{IoU} \cdot s$ 형태에 대한 측정값이 된다.
 
 \paragraph{게이팅의 공정한 대조군} 본 연구는 게이팅에서 $\sigma$ 조건과 대조군을 세 가지 기준으로 맞추어 보았고 격차의 부호가 갈렸다(부록~\ref{app:criterion}). 더구나 다른 경로가 쓰는 기준인 채택률 일치는 \textbf{NMS 후보 분산에 대조군 자체가 존재하지 않는다.} 확장의 세기와 채택률이 하나의 매개변수($\alpha$)에 묶여 있는 것이 원인이므로 둘을 분리하는 개입을 설계해야 한다. \textbf{본 연구는 그것을 하지 않았고, 그 전까지 게이팅 경로의 우열은 기준을 밝혀야만 말할 수 있다.}
 
@@ -992,7 +986,7 @@ DFL 분포 분산 & 0.4712 & 0.0288 & $+0.1589$ \\
 
 \textbf{유의성을 확보한 결과는 둘이다}. 박스 크기 모형이 검출별 공분산 모형을 이긴 것(7/7, 음의 방향)과 합친 모형이 박스 크기 모형을 이긴 것(7/7, 양의 방향, \ref{sec:5-2}절). 후자는 양의 방향이므로 다중 비교의 영향을 받으며, 본 연구는 그 효과가 $-0.012$ nats로 첫 번째의 $1/47$에 불과하다는 점을 근거로 실용적 함의를 주장하지 않는다.
 
-연구 과정에서 18건의 결론을 철회하였으며, 이를 삭제하지 않고 원인과 함께 기록으로 남겼다. 그중에는 라이브러리 가로채기 과정의 좌표계 오류, 무작위 씨앗 미고정, 사전 등록한 절차를 따르지 않은 값으로 판정한 사례 등이 포함된다. 특히 세 번째 경우에는 올바른 절차로 다시 측정하였을 때 결과의 부호가 반대로 나왔다. \textbf{마지막 두 건은 본 원고를 작성하는 과정에서 발생하였다.} 하나는 \ref{sec:6-2}절에 측정 없이 방향을 예측한 문장이고, 다른 하나는 \ref{sec:6-4}절이 주변부 AUC $0.4661$을 ``박스가 작을수록 연관이 틀리기 쉽다''는 \textit{방향}으로 옮겨 적은 것이다. 둘 다 사후에 측정하여 철회하였다. 뒤의 것은 개정 과정에서 \ref{sec:5-7}절 논증의 전제로 승격되었다가 잡혔다. 자기 논증의 전제로 삼기 전에 그 전제를 재야 한다. 원고의 문장도 자료와 같은 검사를 받아야 한다.
+연구 과정에서 18건의 결론을 철회하였으며, 이를 삭제하지 않고 원인과 함께 기록으로 남겼다. 그중에는 라이브러리 가로채기 과정의 좌표계 오류, 무작위 씨앗 미고정, 사전 등록한 절차를 따르지 않은 값으로 판정한 사례 등이 포함된다. 특히 세 번째 경우에는 올바른 절차로 다시 측정하였을 때 결과의 부호가 반대로 나왔다. \textbf{마지막 두 건은 본 원고를 작성하는 과정에서 발생하였다.} 하나는 \ref{sec:6-2}절에 측정 없이 방향을 예측한 문장이고, 다른 하나는 부록~\ref{app:scatter}가 주변부 AUC $0.4661$을 ``박스가 작을수록 연관이 틀리기 쉽다''는 \textit{방향}으로 옮겨 적은 것이다. 둘 다 사후에 측정하여 철회하였다. 뒤의 것은 개정 과정에서 \ref{sec:5-7}절 논증의 전제로 승격되었다가 잡혔다. 자기 논증의 전제로 삼기 전에 그 전제를 재야 한다. 원고의 문장도 자료와 같은 검사를 받아야 한다.
 
 추적기 재생은 결정적이며, 동일 조건을 다시 실행하여 출력 파일의 해시가 7개 시퀀스 전부에서 일치함을 확인하였다. 다만 MOT17 데이터는 CC BY-NC-SA 3.0 라이선스로 재배포가 불가능하므로, 실험의 완전한 재현은 데이터를 직접 확보한 경우에만 가능하다. 이론 부분의 코드는 이러한 제약 없이 실행 가능하다.
 
