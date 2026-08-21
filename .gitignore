@@ -25,6 +25,10 @@ external/
 experiments/exp03_box_relaxation/bootstrap_cell.txt
 
 
-# 그림 PNG — 원고는 PDF 만 쓴다. 어디서도 참조하지 않는데 추적 바이트의 38%
-# 였다. 눈으로 보기 좋으니 만들기는 하되 추적하지 않는다.
+# 그림 PNG — 원고는 PDF 만 쓴다. 대부분은 추적하지 않는다.
+# **단 README 가 쓰는 셋은 예외다** — GitHub 은 PDF 를 렌더링하지 않으므로
+# 이 셋은 죽은 무게가 아니라 실제로 참조되는 자산이다.
 figures/*.png
+!figures/fig_ceiling.png
+!figures/fig_grid.png
+!figures/fig_reversal.png
