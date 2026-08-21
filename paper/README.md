@@ -28,7 +28,24 @@ winget install MiKTeX.MiKTeX
 python experiments/figures/fig_signal_transfer.py && python experiments/figures/fig_grid.py && python experiments/figures/fig_criterion.py && python experiments/figures/fig_ceiling.py && python experiments/figures/fig_reversal.py
 ```
 
-산출물이 뿌리의 `figures/` 에 떨어지므로 `paper/figures/` 로 복사한다.
+`style.py` 의 `save()` 가 **`figures/` 와 `paper/figures/` 두 곳에 PDF 를
+직접 쓴다.** 예전에는 이 줄이 *"복사한다"* 로 사람에게 시켰고, 실제로 여섯 중
+둘이 갈려 있었다 (`fig_ceiling`, `fig_signal_transfer` — 풀어 보니 내용은 같고
+메타데이터만 달랐다). **손을 없앴다.**
+
+**PDF 는 바이트까지 결정적이다.** `savefig(metadata={"CreationDate": None})`
+을 준다. 안 주면 matplotlib 이 실행마다 타임스탬프를 찍어서 **같은 그림을 다시
+그려도 바이트가 달라지고**, 그러면 (가) git 이 매번 새 blob 을 쌓고 (나)
+*"이 그림 진짜 바뀌었나"* 를 해시로 못 묻는다. **재어 확인했다** — 빼기 전에는
+두 번 그린 해시가 다르고, 빼면 같다. 다섯 그림을 두 번 돌려 PDF 10 개 해시가
+전부 일치하는 것도 확인했다. **PNG 는 원래 타임스탬프를 안 넣어 손댈 것이 없다.**
+
+**PNG 는 git 에서 제외한다** (`.gitignore` 의 `figures/*.png`). 원고는 PDF 만
+쓰고 PNG 는 `.md`·`.tex`·`.py` 어디서도 참조하지 않는데 **추적 바이트의 38%
+(1.1MB)** 였다. 눈으로 볼 용도로 만들기만 한다.
+
+`fig_source_channel` 의 **산출물은 지웠다** — 표 2.1 로 옮겨 은퇴한 그림이다.
+**스크립트는 남긴다** (규칙 4). 필요하면 다시 그리면 된다.
 
 **번호는 적지 않는다.** 절을 하나 끼우면 `그림 3` 이 `그림 4` 가 되는데 아무도
 안 알려준다 — 절 참조에서 이미 두 번 데인 그 병이다. 스크립트 docstring 과

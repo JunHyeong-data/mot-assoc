@@ -24,3 +24,7 @@ external/
 # 소스를 박제하므로 커밋해 두면 옛 코드가 조용히 콜랩에 설치된다.
 experiments/exp03_box_relaxation/bootstrap_cell.txt
 
+
+# 그림 PNG — 원고는 PDF 만 쓴다. 어디서도 참조하지 않는데 추적 바이트의 38%
+# 였다. 눈으로 보기 좋으니 만들기는 하되 추적하지 않는다.
+figures/*.png

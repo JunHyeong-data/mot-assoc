@@ -96,11 +96,27 @@ def bare(ax, keep=("left", "bottom")):
     ax.tick_params(length=2.5)
 
 
-def save(fig, name, out="figures"):
+def save(fig, name, out="figures", also="paper/figures"):
+    """PDF 는 두 곳에 쓰고 PNG 는 보기용으로 `out` 에만 쓴다.
+
+    **PDF 에서 `CreationDate` 를 뺀다.** 안 빼면 같은 그림을 다시 그려도
+    바이트가 달라져서 (가) git 이 매번 새 blob 을 쌓고 (나) *"이 그림 진짜
+    바뀌었나"* 를 해시로 못 묻는다. 실제로 두 번 그려 대조했다 --- 빼기 전은
+    해시가 다르고 빼면 같다. **PNG 는 원래 타임스탬프를 안 넣어 손댈 것이 없다.**
+
+    `paper/figures/` 는 예전에 README 가 **사람에게 복사를 시켰고** 여섯 중
+    둘이 갈렸다 (풀어 보니 내용은 같고 메타데이터만 달랐다). 손을 없앤다.
+
+    **PNG 는 git 에서 제외한다** --- 원고는 PDF 만 쓰고 어디서도 참조하지
+    않는데 추적 바이트의 38% 였다. 눈으로 볼 용도로 만들기만 한다.
+    """
     from pathlib import Path
-    p = Path(out)
-    p.mkdir(parents=True, exist_ok=True)
-    for ext in ("pdf", "png"):
-        f = p / ("%s.%s" % (name, ext))
-        fig.savefig(f)
+    dirs = [Path(out)] + ([Path(also)] if also else [])
+    for d in dirs:
+        d.mkdir(parents=True, exist_ok=True)
+        f = d / ("%s.pdf" % name)
+        fig.savefig(f, metadata={"CreationDate": None})
         print("저장: %s" % f)
+    f = Path(out) / ("%s.png" % name)
+    fig.savefig(f)
+    print("저장: %s (보기용, git 제외)" % f)
