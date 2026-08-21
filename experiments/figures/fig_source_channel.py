@@ -69,7 +69,7 @@ CELLS = {
     # 얼마나 나쁜가다. **다른 양이므로 같은 색으로 칠하면 오해를 부른다.**
     (4, 3): ("UncTrack $+2.2$\nours $-4.33$", "m", False),
     (5, 2): ("LG-Track\n4-level cascade", "+", False),
-    (5, 3): ("UncTrack\nentropy $+0.2$", "+", False),
+    (5, 3): ("UncTrack\nentropy $+0.1$", "+", False),
     (5, 4): ("DeepSORT (age)\nBae (routing)", "+", False),
     (6, 3): ("ours $-0.21$\n(oracle $+0.89$)", "-", True),
 }
