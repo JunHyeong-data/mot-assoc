@@ -9,7 +9,7 @@ it is **σ itself**.
 
 JunHyeong Park · Department of Data Science, Inha University
 
-[한국어 README](README.ko.md) · [manuscript (Korean, LaTeX)](paper/report.tex)
+[한국어 README](README.ko.md) · **[read the manuscript (PDF, Korean, 53 pp.)](paper/report.pdf)** · [source](paper/report.tex)
 
 </div>
 
@@ -248,7 +248,7 @@ The full methodology norm is in [`CLAUDE.md`](CLAUDE.md) (Korean). In summary:
 theory/        synthetic checks and proofs. numpy + scipy only, no GPU — runs with no setup
 experiments/   real data. exp00 ~ exp21
 notes/         progress log, direction check, self-review, manuscript notes (Korean)
-paper/         the manuscript (LaTeX, Korean)
+paper/         the manuscript — `report.tex` and the typeset `report.pdf` (Korean)
 figures/       figures (PDF; the three the README uses are also tracked as PNG)
 data/          (git-excluded) MOT17, detection cache
 external/      (git-excluded) UTrack clone
@@ -258,7 +258,8 @@ external/      (git-excluded) UTrack clone
 → [`notes/direction.md`](notes/direction.md) (prior work and contribution)
 → [`notes/self_review.md`](notes/self_review.md) (weaknesses). These notes are in Korean.
 
-The manuscript is [`paper/report.tex`](paper/report.tex); build instructions are in
+The compiled manuscript is [`paper/report.pdf`](paper/report.pdf) (Korean, 53 pages);
+the source is [`paper/report.tex`](paper/report.tex) and build instructions are in
 [`paper/README.md`](paper/README.md).
 
 ---

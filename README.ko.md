@@ -7,7 +7,7 @@
 
 박준형 · 인하대학교 데이터사이언스학과
 
-[English README](README.md) · [원고 (LaTeX)](paper/report.tex)
+[English README](README.md) · **[원고 읽기 (PDF, 53쪽)](paper/report.pdf)** · [원본](paper/report.tex)
 
 </div>
 
@@ -224,7 +224,7 @@ W² = ‖ε‖² + tr(Σt) + tr(Σd) − 2·tr((Σt^½ Σd Σt^½)^½)
 theory/        합성·증명. numpy + scipy 만, GPU 불필요 — 준비 없이 바로 실행된다
 experiments/   실데이터. exp00 ~ exp21
 notes/         진행 기록, 방향 점검, 자체 심사, 논문 노트
-paper/         원고(LaTeX)
+paper/         원고 — `report.tex` 와 조판된 `report.pdf`
 figures/       그림 (PDF; README가 쓰는 셋만 PNG도 추적)
 data/          (git 제외) MOT17, 검출 캐시
 external/      (git 제외) UTrack 클론
@@ -234,7 +234,8 @@ external/      (git 제외) UTrack 클론
 → [`notes/direction.md`](notes/direction.md) (선행연구와 기여)
 → [`notes/self_review.md`](notes/self_review.md) (약점)
 
-원고는 [`paper/report.tex`](paper/report.tex)이고, 빌드 방법은
+조판된 원고는 [`paper/report.pdf`](paper/report.pdf) (53쪽), 원본은
+[`paper/report.tex`](paper/report.tex)이고 빌드 방법은
 [`paper/README.md`](paper/README.md)에 있다.
 
 ---
