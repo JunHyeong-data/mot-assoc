@@ -1,262 +1,289 @@
 <div align="center">
 
-# 검출 불확실성은 데이터 연관에 쓸모가 있는가
+# Is Detection Uncertainty Usable for Data Association?
 
-**다중객체추적(MOT)의 연관 비용에 검출기가 내는 위치 불확실성 σ를 넣으면 추적이 좋아지는가**를
-통제된 실험으로 묻는다. 답은 **아니다** — 그리고 원인은 주입 방식이 아니라 **σ 자체**다.
+**Does injecting the detector's localization uncertainty σ into the association cost of
+multi-object tracking make tracking better?** This repository asks that question under
+controlled conditions. The answer is **no** — and the cause is not the injection form,
+it is **σ itself**.
 
-박준형 · 인하대학교 데이터사이언스학과
+JunHyeong Park · Department of Data Science, Inha University
+
+[한국어 README](README.ko.md) · [manuscript (Korean, LaTeX)](paper/report.tex)
 
 </div>
 
-> 결과뿐 아니라 **틀렸던 것과 왜 틀렸는지**를 함께 공개하는 연구 노트 저장소입니다.
-> 지금까지 **18건**의 결론을 철회했고 하나도 지우지 않았습니다 → [철회 기록](#철회-기록)
+> A research-notebook repository that publishes **what was wrong and why**, not only what worked.
+> **18 conclusions have been retracted so far and none of them deleted** → [retraction log](#retraction-log)
 
 ---
 
-## 한 장으로
+## In one figure
 
-<img src="figures/fig_ceiling.png" width="100%" alt="시퀀스별 개선 여지와 네 경로의 결과">
+<img src="figures/fig_ceiling.png" width="100%" alt="Per-sequence headroom and the outcome of four injection channels">
 
-**왼쪽**: 연관을 정답으로 풀면 얻는 여지가 장면마다 +0.91에서 +12.17까지 갈린다.
-**오른쪽**: 0보다 큰 것은 오라클 둘과 카메라 보상뿐이고, **검출기 σ를 주입한 네 경로는 전부 0 아래**다.
+**Left**: solving association with ground truth leaves headroom that ranges from +0.91 to
++12.17 HOTA depending on the scene.
+**Right**: the only bars above zero are the two oracles and camera motion compensation —
+**all four channels that inject detector σ land below zero**.
 
-즉 **개선할 여지는 있었는데 σ로는 도달하지 못했다.** 이 저장소는 그 이유를 찾는 기록이다.
+So **the headroom existed and σ did not reach it.** This repository is the record of finding out why.
 
 ---
 
-## 논증 네 걸음
+## The argument in four steps
 
-| | 물음 | 답 | 근거 |
+| | Question | Answer | Evidence |
 |:--:|---|---|:--:|
-| **1** | σ에 신호가 있는가? | **있다.** 위치 오차를 예측한다 (편상관 **+0.322**, 7/7 시퀀스) | 실험 1 |
-| **2** | 넣으면 좋아지는가? | **아니다.** 네 경로 전부 음수 (**−0.21 ~ −8.90** HOTA) | 실험 2·3·5·6 |
-| **3** | 애초에 개선할 여지가 없었나? | **아니다.** 연관을 정답으로 풀면 **+3.122** HOTA가 남아 있다 | 실험 12 |
-| **4** | 그럼 왜 안 되나? | **σ는 "어느 검출이 나쁜가"를 말하지 "어느 매칭이 틀렸는가"를 말하지 않는다** | 실험 15·18·21 |
+| **1** | Is there any signal in σ? | **Yes.** It predicts localization error (partial correlation **+0.322**, 7/7 sequences) | exp01 |
+| **2** | Does injecting it help? | **No.** All four channels negative (**−0.21 to −8.90** HOTA) | exp02·03·05·06 |
+| **3** | Was there nothing to gain in the first place? | **No.** Solving association with ground truth leaves **+3.122** HOTA | exp12 |
+| **4** | Then why does it fail? | **σ says "which detection is bad", not "which match is wrong"** | exp15·18·21 |
 
-4번이 이 연구의 답이다. σ의 연관 오류 예측력은 AUC **0.46 / 0.54**로 사전 등록한 기준(0.55)에 못 미친다.
+Step 4 is the answer of this study. σ's ability to discriminate association errors is
+AUC **0.46 / 0.54**, short of the preregistered threshold of 0.55.
 
 ---
 
-## 주요 결과
+## Main results
 
-### 1. 경로가 나쁜가, 추정 방식이 나쁜가
+### 1. Is it the channel that is bad, or the estimator?
 
-하나의 재생 파이프라인 안에서 **두 경로 × 세 추정 방식**을 전부 돌렸다.
-검출 캐시·추적기 설정·평가 절차가 전부 동일하다.
+**Two channels × three estimators** were all run inside a single replay pipeline.
+The detection cache, the tracker configuration and the evaluation procedure are identical across cells.
 
-<img src="figures/fig_grid.png" width="100%" alt="추정 방식 x 적용 경로 격자">
+<img src="figures/fig_grid.png" width="100%" alt="Estimator x injection channel grid">
 
-| 추정 방식 | 거리 함수 | 게이팅 |
+| Estimator | Distance function | Gating |
 |---|--:|--:|
-| NMS 후보 분산 | −10.568 | *−8.470* ‡ |
-| DFL 분포 분산 | −8.573 | −1.960 |
-| **박스 크기** (대조군) | −4.922 | **+0.074** |
+| NMS candidate spread | −10.568 | *−8.470* ‡ |
+| DFL distribution variance | −8.573 | −1.960 |
+| **Box size** (control) | −4.922 | **+0.074** |
 
-‡ **개입 불성립.** 확장량을 키울수록 채택률이 오히려 떨어져 확장이 게이트를 넓히는 개입이 되지 못한다.
-값은 적되 판정에서 뺀다. *"넣어 봤더니 졌다"* 와 다른 종류의 사실이다.
+‡ **The intervention does not hold.** The larger the expansion, the *lower* the acceptance
+rate, so the expansion never becomes an intervention that widens the gate. The number is
+reported but excluded from the verdict — it is a different kind of fact from
+*"we tried it and it lost"*.
 
-유효한 다섯 칸 중 넷이 음수이고, **양수인 한 칸은 검출기 σ가 아니라 대조군**이다.
-`+0.074`는 최소 검출 가능 효과(3.31 HOTA)의 1/45라 이득이 아니라 *"박스를 키우는 것 자체는 공짜"* 로 읽는다.
-사전 등록한 규칙은 유효한 칸이 모두 음수일 것을 요구했으므로
-**교란은 해소되지 않았고, 이를 결과가 아니라 한계로 유지한다.**
+Four of the five valid cells are negative, and **the one positive cell is the control, not detector σ**.
+`+0.074` is 1/45 of the minimum detectable effect (3.31 HOTA), so it is read not as a gain but
+as *"enlarging the box is free"*.
+The preregistered rule required every valid cell to be negative, so
+**the confound is not resolved, and this is kept as a limitation rather than a result.**
 
-### 2. 무엇으로 재는가가 판정을 가른다
+### 2. What you measure with decides the verdict
 
-채택된 쌍 전체의 **주변부 AUC**로 재면 박스 크기도 0.4661로 무용해 보인다.
-그러나 헝가리안이 실제로 푸는 형태 — **같은 호출 안에서 정답과 오답을 짝지어 비교** — 로 재면 달라진다.
+Measured as a **marginal AUC** over all accepted pairs, even box size looks useless (0.4661).
+Measured the way the Hungarian algorithm actually asks — **pairing the correct and the wrongly
+matched detection inside the same call** — the picture changes.
 
-<img src="figures/fig_reversal.png" width="100%" alt="같은 신호를 두 측정 방식으로">
+<img src="figures/fig_reversal.png" width="100%" alt="One signal, two ways of scoring it">
 
-| 신호 | 주변부 AUC | **행 안 정답률** | 시퀀스별 0.5 초과 |
+| Signal | Marginal AUC | **Row-conditional accuracy** | Sequences above 0.5 |
 |---|--:|--:|:--:|
-| **박스 크기 σ_C** | 0.4661 | **0.6451** | 4/7 |
-| NMS 후보 분산 | 0.5355 | 0.4720 | 1/7 |
-| DFL 분포 분산 | 0.4571 | 0.4415 | 2/7 |
+| **Box size σ_C** | 0.4661 | **0.6451** | 4/7 |
+| NMS candidate spread | 0.5355 | 0.4720 | 1/7 |
+| DFL distribution variance | 0.4571 | 0.4415 | 2/7 |
 
-두 값은 **같은 형태의 확률인데 우연 수준의 반대쪽**에 놓인다. 비교 대상만 다르다.
+The two numbers are **probabilities of the same form on opposite sides of chance**.
+Only the comparison set differs.
 
-> **주변부 지표로 선별했다면 문헌에서 가장 성공적인 신호 계열을 시작 전에 기각했을 것이다.**
-> 다만 이 점검은 **필요조건이지 충분조건이 아니다** — 박스 크기는 0.6451로 통과하고도
-> 두 경로에서 기준선을 넘지 못했다(거리 함수 −4.92, 게이팅 +0.07).
-> 그리고 시퀀스 군집을 반영하면 구간이 0.5를 포함하므로 **탐색적 관측이다**(실험 21).
+> **Screening on the marginal metric would have rejected the most successful signal family in the
+> literature before the study started.**
+> But this check is **necessary, not sufficient** — box size passes at 0.6451 and still fails to beat
+> the baseline in both channels (distance function −4.92, gating +0.07).
+> And a sequence-cluster bootstrap puts 0.5 inside the interval, so **this is an exploratory
+> observation** (exp21).
 
-### 3. 게이팅의 우열은 "무엇을 맞추었는가"에 달려 있다
+### 3. Which one wins at gating depends on what was held equal
 
-σ 조건과 대조군을 세 가지 기준으로 맞추어 같은 격차를 다시 쟀다.
+The σ condition and the control were matched on three different quantities, and the same gap
+was measured again under each.
 
-| 맞춘 양 | NMS 후보 분산 | DFL 분포 분산 |
+| Quantity held equal | NMS candidate spread | DFL distribution variance |
 |---|--:|--:|
-| 평균 선형 확장량 (px) | −7.630 | −1.947 |
-| 총 확장 면적 | −8.543 | −2.034 |
-| **1단계 채택률** (주 기준) | *불능* | **+0.191** |
+| Mean linear expansion (px) | −7.630 | −1.947 |
+| Total expanded area | −8.543 | −2.034 |
+| **Stage-1 acceptance rate** (primary) | *infeasible* | **+0.191** |
 
-**부호가 갈린다.** 범위 8.735 HOTA는 최소 검출 가능 효과의 두 배가 넘는다.
-더구나 주 기준은 적용조차 못 했다 — NMS 후보 분산의 채택률은 α=2에서 0.9639로 정점에 이른 뒤
-감소하므로 목표 0.9692에 **어떤 확장량으로도 도달하지 못한다.**
-*"손실의 88%가 확장량을 무엇으로 정했는가에서 온다"* 는 이전 서술은 이 때문에 **철회했다.**
+**The sign flips.** The range of 8.735 HOTA is more than twice the minimum detectable effect.
+Worse, the primary criterion could not even be applied — the acceptance rate under the NMS
+candidate spread peaks at 0.9639 at α=2 and then decreases, so the target of 0.9692 is
+**unreachable at any expansion size**.
+The earlier statement *"88% of the loss comes from how the expansion size was chosen"* was
+**retracted** for this reason.
 
 ---
 
-## 지금 어디까지 왔나
+## Where things stand
 
-주장마다 근거 수준이 다르다. 섞어 읽지 않도록 먼저 갈라 둔다.
+The claims here do not all rest on the same strength of evidence. They are separated so they
+are not read as one.
 
-| 근거 수준 | 내용 |
+| Evidence level | Content |
 |---|---|
-| **확정** | σ는 위치 오차를 예측한다 · 네 경로 모두 음의 결과 · 개선 여지는 존재한다(+3.122) · 스칼라 덧셈은 최적 할당을 안 바꾼다 |
-| **탐색적** | 박스 크기가 행 안에서 정답을 고른다(0.6451) — 시퀀스 군집을 반영하면 구간이 0.5를 포함하고 4/7이다 |
-| **조건부** | 게이팅에서 σ와 대조군의 우열 — **무엇을 맞추는가에 따라 부호가 뒤집힌다** (−8.5 ~ +0.2) |
-| **미결** | 경로와 추정 방식의 교란 · 게이팅의 공정한 대조군 구성법 · NMS 후보 분산의 장면 간 산포 |
-| **못 쟀다** | 다른 벤치마크의 개선 여지 · 선행 연구의 구조를 그대로 복제한 재현 |
+| **Established** | σ predicts localization error · all four channels negative · headroom exists (+3.122) · adding a scalar does not change the optimal assignment |
+| **Exploratory** | box size picks the correct detection within a row (0.6451) — a sequence-cluster interval includes 0.5 and it is 4/7 by sequence |
+| **Conditional** | which of σ and the control wins at gating — **the sign flips with what is held equal** (−8.5 to +0.2) |
+| **Open** | the channel/estimator confound · how to build a fair control for gating · the between-scene spread of the NMS candidate spread |
+| **Not measured** | headroom on other benchmarks · a replication that reproduces the prior work's structure as-is |
 
 ---
 
-## 질문이 나온 자리
+## Where the question came from
 
-트래킹은 매 프레임 비용행렬(트랙 M × 검출 N)을 만들고 헝가리안으로 푼다.
-그 비용에 검출이 얼마나 믿을 만한지는 **절반만** 들어간다.
+Tracking builds a cost matrix (M tracks × N detections) every frame and solves it with the
+Hungarian algorithm. Only **half** of what the detector knows about its own reliability enters that cost.
 
-- **분류 신뢰도(score)는 이미 들어간다.** ByteTrack의 `fuse_score`가 `cost = 1 − IoU·s`로
-  곱해 넣고 ultralytics 기본값이 `True`다. *"신뢰도가 비용에 안 들어간다"* 는 서술은 사실이 아니다.
-- **위치 불확실성(공분산)은 안 들어간다.** SORT는 IoU 하나, DeepSORT는 마할라노비스 + 외형인데
-  검출 쪽 공분산은 상수로 고정된다.
+- **Classification confidence already enters.** ByteTrack's `fuse_score` multiplies it in as
+  `cost = 1 − IoU·s`, and it is `True` by default in ultralytics. The claim that
+  *"confidence does not enter the cost"* is not accurate.
+- **Localization uncertainty (covariance) does not.** SORT uses IoU alone; DeepSORT uses
+  Mahalanobis plus appearance, but the detection-side covariance is held constant.
 
-score는 *"이 박스에 사람이 있는가"* 이고, 이 연구가 묻는 것은 *"이 박스가 어디 있는지를 얼마나 아는가"* 다.
+Confidence answers *"is there a person in this box"*. This study asks
+*"how well do we know where this box is"*.
 
-> 검출별 **위치** 불확실성을 비용에 넣으면 매칭 결과가 달라지는가? 달라진다면 어떤 조건에서인가?
+> Does injecting per-detection **localization** uncertainty into the cost change the matching?
+> If it does, under what conditions?
 
-야간 사각지대 경보 시스템을 만들다가, 경보 판정이 전적으로 트랙 연속성에 의존하는데
-매칭 비용은 IoU 하나뿐인 것을 보고 시작했다.
+The question came out of building a night-time blind-spot alert system, where the alert decision
+depended entirely on track continuity while the matching cost was IoU and nothing else.
 
 <details>
-<summary><b>이론 — 경로별로 갈린다 (펼치기)</b></summary>
+<summary><b>Theory — the channels do not behave alike (expand)</b></summary>
 
 <br>
 
-불확실성이 할당에 도달하는 길을 넷으로 나누면 문헌의 성패가 이론이 예측한 대로 갈린다.
+Splitting the routes by which uncertainty can reach the assignment into four, the successes and
+failures reported in the literature fall where the theory predicts.
 
-| 경로 | 이론 | 문헌 실적 |
+| Channel | Theory | Track record in the literature |
 |---|---|---|
-| (a) 비용에 스칼라 덧셈 | 기여 0 (M, N 조건부) | 그렇게 한 논문 없음 |
-| (a') 비용에 곱·가중 | 도달함 | LG-Track 계열, ByteTrack `fuse_score` |
-| (b) 칼만 `R` 교체 | 도달하나 보정 의존 | UncertaintyTrack −0.1, UTrack −0.62 — **둘 다 손해** |
-| (c) 게이팅·임계값·박스확장 | 막히지 않음 | UncertaintyTrack **+2.3** — 단일 최대 기여 |
-| (d) 라우팅 | 막히지 않음 | Bae TPAMI'18, 엔트로피 그리디 +0.1 |
+| (a) additive scalar in the cost | zero contribution (conditional on M, N) | no paper does this |
+| (a') multiplicative / weighted in the cost | reaches | LG-Track family, ByteTrack `fuse_score` |
+| (b) replacing the Kalman `R` | reaches, but depends on calibration | UncertaintyTrack −0.1, UTrack −0.62 — **both a loss** |
+| (c) gating / threshold / box expansion | not blocked | UncertaintyTrack **+2.3** — its single largest contribution |
+| (d) routing | not blocked | Bae TPAMI'18, entropy-greedy +0.1 |
 
-**거리함수 안에서도 갈린다 — 와서스타인만 세 진단을 통과한다.**
+**The distance function splits too — only Wasserstein passes all three diagnostics.**
 `theory/divergence_channels.py`
 
-| 거리 | [1] 도달 | [2] 가림 (×1→×100) | [3] 공분산 역설 |
+| Distance | [1] reaches | [2] occlusion (×1→×100) | [3] covariance paradox |
 |---|--:|---|---|
-| 마할라노비스 (트랙만) | 0.00 (경로 없음) | — | 있음 |
-| 마할라노비스 (결합) | 0.499 | 1.00 → 0.000 닫힘 | 있음 |
-| 바타차야 | 0.117 | 1.00 → 0.002 닫힘 | 부분적 |
-| **와서스타인 (2-W²)** | 0.086 | 1.00 → **10.0 열림** | **없음** |
+| Mahalanobis (track only) | 0.00 (no route) | — | present |
+| Mahalanobis (combined) | 0.499 | 1.00 → 0.000 closed | present |
+| Bhattacharyya | 0.117 | 1.00 → 0.002 closed | partial |
+| **Wasserstein (2-W²)** | 0.086 | 1.00 → **10.0 open** | **absent** |
 
 ```
 W² = ‖ε‖² + tr(Σt) + tr(Σd) − 2·tr((Σt^½ Σd Σt^½)^½)
-     └─ Σ⁻¹ 없음    └ 행상수   └ 열상수   └── 유일한 비분리항
+     └─ no Σ⁻¹      └ row const  └ col const  └── the only non-separable term
 ```
 
-평균항에 `Σ⁻¹`이 안 붙어 역설이 원리적으로 없고, `tr(Σt)`·`tr(Σd)`는 이중중심화에서 사라진다.
+There is no `Σ⁻¹` on the mean term, so the paradox is absent by construction, and
+`tr(Σt)`·`tr(Σd)` vanish under double centering.
 
-> **그런데 실증에서 닫혔다.** 실제 트래커에 넣으니 맨 IoU보다 −8.90 HOTA다.
-> *"경로가 열려 있다"* 는 *"성능이 오른다"* 가 아니다 — 이 저장소의 상시 교훈이다.
+> **And yet it closed empirically.** Put into a real tracker it is −8.90 HOTA against plain IoU.
+> *"The channel is open"* is not *"performance goes up"* — the standing lesson of this repository.
 
 </details>
 
 <details>
-<summary><b>설계 제약 — 왜 "더하기"로는 안 되는가 (펼치기)</b></summary>
+<summary><b>Design constraint — why "adding" cannot work (expand)</b></summary>
 
 <br>
 
-헝가리안은 행/열 상수를 더해도 최적 할당이 불변이다 (**단** M ≤ N 또는 M ≥ N 조건부).
-따라서 불확실성을 스칼라로 더하는 형태는 원리적으로 기여가 0이다. 곱이어야 도달한다.
+The Hungarian optimum is invariant to adding a constant to a row or a column (**conditional** on
+M ≤ N or M ≥ N). So injecting uncertainty as an additive scalar contributes exactly zero by
+construction. It has to be multiplicative to reach.
 
-실데이터에서도 확인됐다 (실험 11) — 가산은 쌍이 달라진 12건이 전부 동점이고 최적성이 0건 깨졌다.
-그런데 **임계값으로는 65.4% 호출의 채택을 바꾼다.** 기여 0인데 해롭기만 하다 (HOTA −3.75).
+This was confirmed on real data (exp11) — under the additive form, 12 pairs changed and all 12
+were ties, with zero optimality violations.
+And yet **through the threshold it changes acceptance in 65.4% of calls.** Zero contribution,
+pure harm (HOTA −3.75).
 
-> 따라서 *"성능이 바뀌었다"* 를 *"정보가 전달됐다"* 의 근거로 쓰면 안 된다.
-> 두 경로를 분리해서 보고한다.
+> So *"performance changed"* must not be used as evidence that *"information was transmitted"*.
+> The two channels are reported separately.
 
 </details>
 
 ---
 
-## 이 저장소가 지키는 규칙
+## The rules this repository follows
 
-방법론 규범 전문은 [`CLAUDE.md`](CLAUDE.md)에 있다. 요약하면:
+The full methodology norm is in [`CLAUDE.md`](CLAUDE.md) (Korean). In summary:
 
 | | |
 |:--:|---|
-| **1** | 사전 등록(`PREREG-*.md`)을 자료보다 **먼저 커밋**한다. 결과 시나리오별 결론까지 미리 적는다 |
-| **2** | **사전 등록한 절차를 안 지킨 값으로는 판정도 철회도 하지 않는다** — 가장 비싼 교훈이다 |
-| **3** | 같은 양을 **다른 경로로 한 번 더** 잰다. 두 실험이 다르게 말하면 하나가 틀린 것이다 |
-| **4** | **철회한 것을 지우지 않는다.** 취소선으로 남기고 왜 틀렸는지 적는다 |
-| **5** | 가중과 비가중을 **둘 다** 보고한다. 가중 여부로 부호가 뒤집힌 적이 두 번 있다 |
-| **6** | 판정 기준은 **최소 검출 가능 효과 안에서** 정한다. n=7에서 검출 가능한 최소 효과는 3.31 HOTA다 |
-| **7** | **원고의 문장도 자료와 같은 검사를 받는다.** *"~할 것이므로 ~하다"* 는 대개 안 잰 것이다 |
-| **8** | 확장을 **어느 쪽에 주는가**를 확인한다. 통제 변수가 실험 사이에서 조용히 뒤집힌다 |
-| **9** | 가르는 실험은 **두 예측을 표로 적고** 시작한다. 두 줄이 같으면 가르는 실험이 아니다 |
+| **1** | Commit the preregistration (`PREREG-*.md`) **before** the data. Write down the conclusion for each possible outcome in advance |
+| **2** | **Never rule — or retract — on a value that departed from the preregistered procedure.** The most expensive lesson here |
+| **3** | Measure the same quantity **a second time by another route**. If two experiments disagree, one of them is wrong |
+| **4** | **Never delete a retraction.** Strike it through and write down why it was wrong |
+| **5** | Report **both** weighted and unweighted. The sign has flipped on that choice twice |
+| **6** | Set the decision threshold **inside the minimum detectable effect**. At n=7 the smallest detectable effect is 3.31 HOTA |
+| **7** | **Manuscript sentences get the same audit as data.** *"X, therefore Y"* usually means Y was never measured |
+| **8** | Check **which side the expansion is applied to.** Control variables flip silently between experiments |
+| **9** | A discriminating experiment starts by **writing both predictions in a table**. If the two rows are identical, it does not discriminate |
 
-### 철회 기록
+### Retraction log
 
-**18건.** 전문은 [`notes/progress.md`](notes/progress.md)에 있다. 대표적인 것:
+**18 of them.** The full list is in [`notes/progress.md`](notes/progress.md) (Korean). Representative entries:
 
-| 철회 | 왜 틀렸나 |
+| Retracted | Why it was wrong |
 |---|---|
-| ~~exp01 기각 (편상관 +0.044)~~ | NMS **in-place 변환 버그.** 고치니 +0.336 |
-| ~~χ² 594~663배가 검출기 무관~~ | **letterbox 좌표 버그**가 만든 거짓 일치 |
-| ~~exp03 짝 일관성 수치가 재현된다~~ | `hash()`를 난수 시드로 써서 실행마다 다른 세계였다 |
-| ~~정규화하면 오히려 나빠진다~~ | **사전 등록한 스케일을 안 지킨 값으로 판정했다.** 제대로 재니 부호가 뒤집혔다 |
-| ~~비등방 C를 쓰면 결론이 보수적이다~~ | **원고를 쓰다가 생겼다.** 재니 반대였다 (분산비 0.973 대 가정 0.128) |
-| ~~실험 19의 게이팅 열~~ | **확장을 검출에만 줘서 개입 방향이 뒤집혔다.** 양쪽에 주니 세 칸이 다 바뀌었다 |
-| ~~주변부 AUC 0.4661은 "작은 박스가 오류 쪽"~~ | **두 분포가 교차한다.** 중앙값은 오히려 오류 쪽이 높다 — 방향이 정의되지 않는다 |
+| ~~exp01 rejected (partial correlation +0.044)~~ | **NMS in-place transform bug.** Fixed: +0.336 |
+| ~~χ² 594–663× is detector-independent~~ | a false agreement created by a **letterbox coordinate bug** |
+| ~~exp03 pair-consistency numbers reproduce~~ | `hash()` used as the RNG seed — a different world every run |
+| ~~normalizing makes it worse~~ | **ruled on a value that departed from the preregistered scale.** Measured properly, the sign flipped |
+| ~~an anisotropic C would make our conclusion conservative~~ | **this one came out of writing the manuscript.** Measured: the opposite (variance ratio 0.973 vs. the assumed 0.128) |
+| ~~the gating column of exp19~~ | **expansion applied to detections only, which reverses the direction of the intervention.** Applied to both sides, three cells changed |
+| ~~marginal AUC 0.4661 means "small boxes are on the error side"~~ | **the two distributions cross.** The median is in fact higher on the error side — the direction is undefined |
 
 ---
 
-## 저장소 구조
+## Repository layout
 
 ```
-theory/        합성·증명. numpy + scipy 만, GPU 불필요 — 준비 없이 바로 실행된다
-experiments/   실데이터. exp00 ~ exp21
-notes/         진행 기록, 방향 점검, 자체 심사, 논문 노트
-paper/         원고(LaTeX)와 검사기 넷
-figures/       그림 (PDF; README가 쓰는 셋만 PNG도 추적)
-data/          (git 제외) MOT17, 검출 캐시
-external/      (git 제외) UTrack 클론
+theory/        synthetic checks and proofs. numpy + scipy only, no GPU — runs with no setup
+experiments/   real data. exp00 ~ exp21
+notes/         progress log, direction check, self-review, manuscript notes (Korean)
+paper/         the manuscript (LaTeX, Korean)
+figures/       figures (PDF; the three the README uses are also tracked as PNG)
+data/          (git-excluded) MOT17, detection cache
+external/      (git-excluded) UTrack clone
 ```
 
-**읽는 순서** → [`notes/progress.md`](notes/progress.md) (무엇이 확정·철회됐는가)
-→ [`notes/direction.md`](notes/direction.md) (선행연구와 기여)
-→ [`notes/self_review.md`](notes/self_review.md) (약점)
+**Reading order** → [`notes/progress.md`](notes/progress.md) (what is established and what was retracted)
+→ [`notes/direction.md`](notes/direction.md) (prior work and contribution)
+→ [`notes/self_review.md`](notes/self_review.md) (weaknesses). These notes are in Korean.
 
-원고는 [`paper/report.tex`](paper/report.tex)이고, 빌드와 검사기 사용법은
-[`paper/README.md`](paper/README.md)에 있다.
+The manuscript is [`paper/report.tex`](paper/report.tex); build instructions are in
+[`paper/README.md`](paper/README.md).
 
 ---
 
-## 실행
+## Running it
 
-### 먼저 이것부터 실행한다
+### What is not in the repository
 
-```bash
-python check_setup.py
-```
+A clean-clone test on 2026-08-18 found that all 7 scripts under `theory/` ran and
+**nothing under `experiments/` did** — `external/` and `data/` are git-excluded, and at the time
+that fact was written down nowhere. The failure surfaced only as
+`ModuleNotFoundError: No module named 'tracker'`. Fill these in first.
 
-무엇이 없는지와 어떻게 채우는지를 알려준다.
-2026-08-18에 깨끗한 디렉터리로 클론해 재현성을 시험했더니 `theory/` 7개는 전부 실행되었지만
-**`experiments/`는 하나도 실행되지 않았다** — `external/`과 `data/`가 git 제외인데 그 사실이 어디에도
-적혀 있지 않았다. 그 간극을 메우는 스크립트다.
-
-| 필요한 것 | 왜 git에 없나 | 채우는 법 |
+| What you need | Why it is not in git | How to get it |
 |---|---|---|
-| `external/UTrack` | 외부 저장소 | `git clone https://github.com/DLR-MI/UTrack.git external/UTrack` |
-| `data/MOT17_A/ablation` | **CC BY-NC-SA 3.0 — 재배포 불가** | 직접 받는다 ([`notes/data_sources.md`](notes/data_sources.md)) |
-| `data/exp05` (검출 캐시) | 용량 | `python experiments/exp05_wasserstein/cache_detections.py` (약 110분) |
+| `external/UTrack` | external repository — the vendored TrackEval metric classes are taken from here | `git clone https://github.com/DLR-MI/UTrack.git external/UTrack` |
+| `data/MOT17_A/ablation` | **CC BY-NC-SA 3.0 — redistribution not permitted** | download it yourself ([`notes/data_sources.md`](notes/data_sources.md)) |
+| `data/exp05` (detection cache) | size | `python experiments/exp05_wasserstein/cache_detections.py` (~110 min) |
+| `data/exp01` (σ / error npz) | size | `python experiments/exp01_nms_variance/run_all.py` |
+| `data/exp06` (threshold grid) | size | `python experiments/exp06_levers/grid.py` |
 
-### 이론 — 준비 없이 바로
+Packages: `numpy` and `scipy` are enough for `theory/`; `experiments/` additionally needs
+`ultralytics`, `torch` and `opencv-python`.
+
+### Theory — no setup needed
 
 ```bash
 pip install -r requirements.txt
@@ -266,32 +293,34 @@ python theory/separability_residual.py
 python theory/threshold_and_fusion.py
 ```
 
-### 실험 — 검출을 한 번 캐시하고 재생한다
+### Experiments — cache the detections once, then replay
 
-캐싱만 약 110분이고 그 뒤로는 조건을 바꿔도 **검출이 비트 단위로 같다.**
-같은 조건을 다시 재생해 출력 해시가 7개 시퀀스 전부 일치하는 것을 확인했다.
+Caching alone takes about 110 minutes; after that **the detections are bit-identical no matter
+which condition is replayed.** Replaying the same condition a second time was verified to give
+matching output hashes on all 7 sequences.
 
 ```bash
-python experiments/exp05_wasserstein/cache_detections.py   # 약 110분, 한 번만
+python experiments/exp05_wasserstein/cache_detections.py   # ~110 min, once
 python experiments/exp05_wasserstein/replay.py iou w_dfl w_size
 python experiments/exp05_wasserstein/evaluate.py iou w_dfl w_size
-python experiments/exp06_levers/grid.py                    # 임계값 그리드 + 사전 점검
-python experiments/exp19_grid/selftest.py                  # 격자 자체 시험
-python experiments/exp19_grid/run.py                       # 2x2 격자
-python experiments/exp20_gatecriterion/run.py              # 게이팅 기준 감사
-python experiments/exp21_cluster/cluster_ci.py             # 시퀀스 군집 부트스트랩
+python experiments/exp06_levers/grid.py                    # threshold grid + preflight
+python experiments/exp19_grid/selftest.py                  # grid self-test
+python experiments/exp19_grid/run.py                       # 2x2 grid
+python experiments/exp20_gatecriterion/run.py              # gating criterion audit
+python experiments/exp21_cluster/cluster_ci.py             # sequence-cluster bootstrap
 ```
 
-실험 2·3은 UTrack 의존성 때문에 Colab에서 돈다
+exp02 and exp03 run on Colab because of the UTrack dependency
 ([`exp02.../colab_setup.md`](experiments/exp02_utrack_replication/colab_setup.md),
 [`exp03.../colab_cells.md`](experiments/exp03_box_relaxation/colab_cells.md)).
 
-> **Windows 콘솔(cp949) 주의.** `print`에 em-dash(—)나 화살표(→)를 쓰면 `UnicodeEncodeError`로 죽는다.
-> `ultralytics`를 import하지 않는 스크립트는 `sys.stdout.reconfigure(encoding="utf-8")`를 직접 쓴다.
+> **Windows console (cp949) note.** An em-dash (—) or an arrow (→) inside `print` kills the script
+> with `UnicodeEncodeError`. Scripts that do not import `ultralytics` call
+> `sys.stdout.reconfigure(encoding="utf-8")` themselves.
 
 ---
 
-## 데이터 라이선스
+## Data licence
 
-**MOT17은 CC BY-NC-SA 3.0 — 비상업 연구만 가능하다.** `data/`는 git에서 제외한다.
-자세한 의무사항은 [`notes/data_sources.md`](notes/data_sources.md).
+**MOT17 is CC BY-NC-SA 3.0 — non-commercial research only.** `data/` is excluded from git.
+The obligations in detail are in [`notes/data_sources.md`](notes/data_sources.md).

@@ -42,7 +42,7 @@ ultralytics 가 잡힌 것이고, 그러면 NMS 분산이 안 나와서 실험 �
 
 ```bash
 !rm -rf /content/mot-assoc /content/exp03
-!git clone -q https://github.com/JunHyeong-data/mot-assoc.git /content/mot-assoc
+!git clone -q https://github.com/JunHyeong-data/MOT-Assoc.git /content/mot-assoc
 !cp -r /content/mot-assoc/experiments/exp03_box_relaxation /content/exp03
 !python /content/exp03/patch_utrack.py /content/UTrack
 ```
@@ -210,7 +210,7 @@ from google.colab import drive; drive.mount('/content/drive')
 
 ```bash
 !rm -rf /content/mot-assoc /content/exp03
-!git clone -q https://github.com/JunHyeong-data/mot-assoc.git /content/mot-assoc
+!git clone -q https://github.com/JunHyeong-data/MOT-Assoc.git /content/mot-assoc
 !cp -r /content/mot-assoc/experiments/exp03_box_relaxation /content/exp03
 !python /content/exp03/patch_utrack.py /content/UTrack
 !grep -c RELAX_DUMP_CALLS /content/UTrack/tracker/box_relax.py
